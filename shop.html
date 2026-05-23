@@ -316,21 +316,27 @@
 
                 // 🌟 智慧解碼網址函數
                 getEventNameFromURL() {
-                    try {
-                        const path = window.location.pathname; // 例如 "/0601-popup-Le-Sserafim.html"
-                        const fileName = path.substring(path.lastIndexOf('/') + 1); // "0601-popup-Le-Sserafim.html"
-                        
-                        if (!fileName || fileName === 'index.html' || fileName === '') {
-                            return "0601 popup Le Sserafim"; // 💡 當直接進入主網址時的預設活動分頁
-                        }
-                        
-                        // 移除結尾的 .html，並把所有橫線 "-" 全面轉換回空格 " "
-                        let nameClean = fileName.replace(/\.html$/i, '').replace(/-/g, ' ');
-                        return nameClean.trim();
-                    } catch (e) {
-                        return "0601 popup Le Sserafim";
-                    }
-                },
+    try {
+        const path = window.location.pathname; // 例如 "/0601-popup-Le-Sserafim" 或 "/shop.html"
+        let fileName = path.substring(path.lastIndexOf('/') + 1); // "0601-popup-Le-Sserafim"
+        
+        // 如果是首頁、乾淨域名或直接開到 shop.html，就給予預設值
+        if (!fileName || fileName === 'index.html' || fileName === 'shop.html' || fileName === '') {
+            return "0601 popup Le Sserafim"; 
+        }
+        
+        // 🌟 先移除結尾可能存在的 .html（不論大小寫）
+        let nameClean = fileName.replace(/\.html$/i, '');
+        
+        // 🌟 再把所有網址橫線 "-" 全面還原回空格 " "
+        nameClean = nameClean.replace(/-/g, ' ');
+        
+        return nameClean.trim(); // 回傳乾淨的 "0601 popup Le Sserafim"
+    } catch (e) {
+        console.error("解析網址失敗:", e);
+        return "0601 popup Le Sserafim";
+    }
+}
 
                 async init() {
                     try {
