@@ -79,7 +79,7 @@
         
         <!-- 中間動態活動標題 -->
         <header class="text-center my-6">
-            <h1 class="text-xl font-medium tracking-widest text-neutral-800 uppercase" x-text="displayEventName">
+            <h1 class="text-xl font-medium tracking-widest text-neutral-800 uppercase" x-text="displayEventName || '未指定代購活動'">
                 正在載入代購活動...
             </h1>
             <div class="w-12 h-[1px] bg-neutral-400 mx-auto mt-3"></div>
@@ -314,40 +314,49 @@
                 
                 cart: {},
 
-                // 🌟 智慧解碼網址函數
+                // 🌟 核心修正：智慧解析網址路徑，不含任何死文字，提取失敗或遇到空白網址直接回傳空字串 ""
                 getEventNameFromURL() {
-    try {
-        const path = window.location.pathname; // 例如 "/0601-popup-Le-Sserafim"
-        
-        // 取得網址最後一段路徑
-        let fileName = path.substring(path.lastIndexOf('/') + 1); 
-        
-        // 如果是首頁、乾淨域名或直接開到 shop.html，給予預設值
-        if (!fileName || fileName === 'index.html' || fileName === 'shop.html') {
-            return "0601 popup Le Sserafim"; 
-        }
-        
-        // 1. 解碼網址（處理中文字或特殊符號轉碼）
-        let nameClean = decodeURIComponent(fileName);
-        
-        // 2. 移除結尾可能存在的 .html 後綴
-        nameClean = nameClean.replace(/\.html$/i, '');
-        
-        // 3. 把所有橫線 "-" 還原回空格 " "
-        nameClean = nameClean.replace(/-/g, ' ');
-        
-        return nameClean.trim(); // 回傳乾淨的 "0601 popup Le Sserafim"
-    } catch (e) {
-        console.error("解析網址失敗:", e);
-        return "0601 popup Le Sserafim";
-    }
-}
+                    try {
+                        const path = window.location.pathname; 
+                        
+                        // 取得網址最後一段路徑
+                        let fileName = path.substring(path.lastIndexOf('/') + 1); 
+                        
+                        // 如果是首頁、乾淨域名或直接開到 shop.html 等不帶活動參數的情況，直接回傳空字串
+                        if (!fileName || fileName === 'index.html' || fileName === 'shop.html') {
+                            return ""; 
+                        }
+                        
+                        // 1. 解碼網址（處理中文字或特殊符號轉碼）
+                        let nameClean = decodeURIComponent(fileName);
+                        
+                        // 2. 移除結尾可能存在的 .html 後綴
+                        nameClean = nameClean.replace(/\.html$/i, '');
+                        
+                        // 3. 把所有橫線 "-" 還原回空格 " "
+                        nameClean = nameClean.replace(/-/g, ' ');
+                        
+                        return nameClean.trim(); 
+                    } catch (e) {
+                        console.error("解析網址失敗:", e);
+                        return "";
+                    }
+                },
+
                 async init() {
                     try {
                         // 1. 自動從 Vercel 網址撈取當前應該讀哪個活動分頁
                         this.sheetEventName = this.getEventNameFromURL();
                         this.displayEventName = this.sheetEventName;
                         
+                        if (!this.sheetEventName) {
+                            console.warn("未在網址中偵測到任何代購活動名稱。");
+                            window.dispatchEvent(new CustomEvent('set-title', { detail: '現場快閃代購 - 852hk.81jp' }));
+                            this.products = [];
+                            this.allAddresses = [];
+                            return;
+                        }
+
                         // 2. 動態變更瀏覽器標籤頁上的 Title 標題
                         window.dispatchEvent(new CustomEvent('set-title', { detail: `代購 ${this.displayEventName} - 852hk.81jp` }));
 
@@ -356,8 +365,8 @@
                         const response = await fetch(fetchUrl);
                         const data = await response.json();
                         
-                        this.products = data.products;
-                        this.allAddresses = data.addresses.map((item, index) => {
+                        this.products = data.products || [];
+                        this.allAddresses = (data.addresses || []).map((item, index) => {
                             item.originalIndex = index;
                             return item;
                         });
@@ -505,7 +514,7 @@
                         return `${name} (${grouped[name].join(', ')})`;
                     }).join(', ');
 
-                    // 📦 這裡會把當前網址解碼出來的「活動名稱」一起送到後端，確保訂單被記到正確活動
+                    // 📦 這裡會把全動態抓取的活動名稱一起送到後端
                     const payload = {
                         eventName: this.sheetEventName, 
                         itemsSummary: itemsSummary,
