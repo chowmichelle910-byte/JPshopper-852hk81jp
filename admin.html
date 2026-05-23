@@ -14,6 +14,7 @@
       --primary: #111111;
       --danger: #ff4d4d;
       --success: #10b981;
+      --accent: #0284c7;
     }
     
     body {
@@ -51,6 +52,14 @@
       font-weight: 600;
       letter-spacing: 0.5px;
     }
+
+    h3 {
+      margin-top: 0;
+      margin-bottom: 12px;
+      font-size: 14px;
+      color: #333333;
+      font-weight: 600;
+    }
     
     .refresh-btn {
       background: none;
@@ -64,6 +73,58 @@
     }
     .refresh-btn:hover {
       background: #f2f2f2;
+      border-color: var(--primary);
+    }
+
+    /* 🛠️ 工具面板樣式 */
+    .tools-panel {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      margin-bottom: 30px;
+    }
+
+    .tool-card {
+      background: #fafafa;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      box-sizing: border-box;
+    }
+
+    .tool-card-left {
+      flex: 1;
+      min-width: 260px;
+    }
+
+    .tool-card-right {
+      flex: 2;
+      min-width: 320px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .full-width {
+      grid-column: span 2;
+    }
+
+    input[type="text"], input[type="number"] {
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid #dddddd;
+      border-radius: 6px;
+      font-size: 13px;
+      box-sizing: border-box;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input[type="text"]:focus, input[type="number"]:focus {
       border-color: var(--primary);
     }
     
@@ -116,7 +177,7 @@
     }
     
     .btn {
-      padding: 6px 14px;
+      padding: 8px 14px;
       border: none;
       border-radius: 6px;
       cursor: pointer;
@@ -124,6 +185,7 @@
       font-weight: 600;
       transition: background 0.2s, transform 0.1s;
       white-space: nowrap;
+      text-align: center;
     }
     .btn:active {
       transform: scale(0.97);
@@ -145,6 +207,14 @@
     }
     .btn-paid:active {
       transform: none;
+    }
+
+    .btn-accent {
+      background-color: var(--accent);
+      color: white;
+    }
+    .btn-accent:hover {
+      background-color: #0369a1;
     }
     
     .loading {
@@ -175,6 +245,33 @@
     <h2>📋 訂單核對全活動總後台</h2>
     <button class="refresh-btn" onclick="fetchOrders()">🔄 重新整理</button>
   </div>
+
+  <!-- 🛠️ 連動管理工具區塊 -->
+  <div class="tools-panel">
+    <!-- 功能 2：快速複製活動分頁 -->
+    <div class="tool-card tool-card-left">
+      <h3>🆕 快速建立活動分頁</h3>
+      <input type="text" id="newEventName" placeholder="新分頁名稱 (例如: Tokyo_06)" style="margin-bottom: 12px;">
+      <button class="btn btn-unpaid" onclick="createNewEvent()" style="width: 100%;">複製 Blank 建立新分頁</button>
+    </div>
+
+    <!-- 功能 3：網頁端遠端上架商品 -->
+    <div class="tool-card tool-card-right">
+      <h3>🛍️ 網頁端遠端商品上架</h3>
+      <div class="form-grid">
+        <input type="text" id="prodTargetSheet" placeholder="目標活動分頁名稱 (必填)">
+        <input type="text" id="prodName" placeholder="商品名稱 (必填)">
+        <input type="text" id="prodSub" placeholder="商品款式/規格 (可選)">
+        <input type="number" id="prodYen" placeholder="日幣原價 (可選)">
+        <input type="number" id="prodCost" placeholder="成本 HKD (可選)">
+        <input type="number" id="prodPrice" placeholder="港幣售價 (必填)">
+        <input type="text" id="prodPhoto" class="full-width" placeholder="Cloudinary 圖片網址 (必填)">
+      </div>
+      <button class="btn btn-accent" onclick="addNewProduct()" style="width: 100%;">發布上架新商品 🚀</button>
+    </div>
+  </div>
+
+  <hr style="border: none; border-top: 1px solid var(--border-color); margin: 25px 0;">
   
   <div id="loading" class="loading">正在從試算表撈取最新訂單...</div>
   
@@ -198,7 +295,7 @@
 </div>
 
 <script>
-  // 🔗 你的最新部署 Google Apps Script Web App 網址
+  // 🔗 最新部署 Google Apps Script Web App 網址
   var GAS_API_URL = "https://script.google.com/macros/s/AKfycbzgsFv9_AjExH0VCh1m6DX18qTmXMKwO0xiBGQfYqvO2Q6nb5ZNeXRbsdRsbGVcFidIQw/exec";
 
   // 網頁開啟時，第一步先進行密碼驗證
@@ -270,22 +367,31 @@
           tdId.innerText = order.id;
           tr.appendChild(tdId);
 
-          // 3. 客戶與自提點資訊 (全新整合)
+          // 3. 客戶與自提點資訊 (修正相容性欄位對接)
           var tdCustomer = document.createElement("td");
           tdCustomer.className = "customer-info";
           
-          var pickupInfo = (order.pickupCode && order.pickupName) ? `📍 [${order.pickupCode}] ${order.pickupName}` : "（未選擇自提點）";
+          var pCode = order.pickupCode || order.pickupId || "";
+          var pName = order.pickupName || order.pickupLocation || "";
+          var pickupInfo = "（未選擇自提點）";
+          
+          if (pCode && pName) {
+            pickupInfo = `📍 [${pCode}] ${pName}`;
+          } else if (order.pickupAddress) {
+            pickupInfo = `📍 ${order.pickupAddress}`;
+          }
+          
           tdCustomer.innerHTML = `
             <div class="customer-name">${order.name}</div>
             <div class="customer-meta">📱 ${order.phone}</div>
             <div class="customer-meta" style="color:#888;">✉️ ${order.email}</div>
-            <div class="customer-meta" style="color:#0284c7; margin-top:4px; font-weight:500;">${pickupInfo}</div>
+            <div class="customer-meta" style="color:var(--accent); margin-top:4px; font-weight:500;">${pickupInfo}</div>
           `;
           tr.appendChild(tdCustomer);
 
           // 4. 購買活動 / 明細摘要
           var tdSummary = document.createElement("td");
-          var eventName = order.event || "0601 popup Le Sserafim";
+          var eventName = order.event || "現場快閃代購";
           tdSummary.innerHTML = `
             <div class="event-badge">${eventName}</div>
             <div style="line-height: 1.4; color: #333;">${order.summary || order.itemsSummary || '無明細資料'}</div>
@@ -336,7 +442,6 @@
     buttonComponent.innerText = "處理中...";
     buttonComponent.disabled = true;
 
-    // 採用相容性最高、無 CORS 阻擋的 POST 發送機制
     fetch(GAS_API_URL, {
       method: "POST",
       mode: "no-cors",
@@ -347,7 +452,6 @@
       })
     })
     .then(() => {
-      // 因為採用 no-cors 模式，瀏覽器無法直接讀取 response 內容，但只要順利完成即代表成功
       buttonComponent.innerText = "✓ 已收款亮燈";
       buttonComponent.className = "btn btn-paid";
       buttonComponent.onclick = null;
@@ -360,6 +464,72 @@
       buttonComponent.disabled = false;
       console.error(err);
     });
+  }
+
+  // 🆕 呼叫功能 2：建立新活動分頁
+  function createNewEvent() {
+    var name = document.getElementById("newEventName").value.trim();
+    if (!name) return alert("請輸入分頁名稱！");
+    
+    if (!confirm(`確定要複製 Blank 模板並建立新分頁【${name}】嗎？`)) return;
+
+    fetch(GAS_API_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "createNewEventSheet",
+        newSheetName: name
+      })
+    })
+    .then(() => {
+      alert("🎉 建立指令已發出！由於網頁安全分流，請於 3 秒後重新整理網頁，或直接至 Google 試算表確認新分頁是否已產生。");
+      document.getElementById("newEventName").value = "";
+    })
+    .catch(err => alert("網路請求錯誤：" + err));
+  }
+
+  // 🆕 呼叫功能 3：遠端上架新商品
+  function addNewProduct() {
+    var targetSheet = document.getElementById("prodTargetSheet").value.trim();
+    var p_name = document.getElementById("prodName").value.trim();
+    var p_price = document.getElementById("prodPrice").value.trim();
+    var p_photo = document.getElementById("prodPhoto").value.trim();
+    
+    if (!targetSheet || !p_name || !p_price || !p_photo) {
+      return alert("請確實填寫必要的四項欄位：目標分頁、商品名稱、港幣售價、圖片網址！");
+    }
+
+    var payload = {
+      action: "addNewProduct",
+      targetSheet: targetSheet,
+      p_name: p_name,
+      p_sub: document.getElementById("prodSub").value.trim(),
+      p_yen: document.getElementById("prodYen").value || 0,
+      p_cost: document.getElementById("prodCost").value || 0,
+      p_price: p_price,
+      p_photo: p_photo,
+      p_weight: 0,
+      p_quote: ""
+    };
+
+    fetch(GAS_API_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    })
+    .then(() => {
+      alert(`🎉 商品【${p_name}】上架指令已送出！已成功填入分頁【${targetSheet}】。`);
+      // 清空商品輸入框，保留目標活動分頁方便連續上架
+      document.getElementById("prodName").value = "";
+      document.getElementById("prodSub").value = "";
+      document.getElementById("prodYen").value = "";
+      document.getElementById("prodCost").value = "";
+      document.getElementById("prodPrice").value = "";
+      document.getElementById("prodPhoto").value = "";
+    })
+    .catch(err => alert("網路請求錯誤：" + err));
   }
 
   function padZero(num) {
