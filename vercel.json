@@ -1,8 +1,9 @@
-{
-  "cleanUrls": true,
-  "rewrites": [
-    { "source": "/", "destination": "/index.html" },
-    { "source": "/:event.html", "destination": "/shop.html" },
-    { "source": "/:event", "destination": "/shop.html" }
-  ]
-}
+```json
+   {
+     "rewrites": [
+       {
+         "source": "/(.*).html",
+         "destination": "/shop.html"
+       }
+     ]
+   }
