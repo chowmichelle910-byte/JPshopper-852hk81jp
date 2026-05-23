@@ -1,9 +1,6 @@
 {
-  "cleanUrls": true,
-  "rewrites": [
-    {
-      "source": "/:eventName",
-      "destination": "/shop.html"
-    }
+  "routes": [
+    { "handle": "filesystem" },
+    { "src": "/(.*)", "dest": "/shop.html" }
   ]
 }
