@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 標題會根據當前代購活動動態改變 -->
+    <title x-data="{ title: '現場快閃代購 - 852hk.81jp' }" x-text="title" @set-title.window="title = $event.detail"></title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js for lightweight reactive state matching Japanese clean design -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+HK:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans HK', 'Helvetica Neue', Arial, sans-serif;
+            background-color: #fbfbfa;
+            color: #333333;
+        }
+        /* 日系洗鍊感微陰影與邊框 */
+        .jp-card {
+            background: #ffffff;
+            border: 1px solid #eef0ed;
+            border-radius: 8px;
+            transition: all 0.25s ease;
+        }
+        .jp-input {
+            border: 1px solid #dcdfdc;
+            background-color: #fafbfa;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+        .jp-input:focus {
+            border-color: #8fa499;
+            background-color: #ffffff;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(143, 164, 153, 0.15);
+        }
+        /* 精細捲動軸 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c5cbc5;
+            border-radius: 3px;
+        }
+        /* 載入動畫 */
+        .spinner {
+            border: 3px solid rgba(0, 0, 0, 0.1);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border-left-color: #4a574d;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="antialiased min-h-screen pb-40">
+
+    <!-- 頂部導航欄 -->
+    <div class="max-w-md mx-auto pt-4 px-4 flex justify-between items-center">
+        <a href="https://www.threads.net/@852hk.81jp" target="_blank" rel="noopener noreferrer" class="inline-flex items-center space-x-1 text-xs text-neutral-500 hover:text-neutral-800 transition-colors">
+            <!-- Threads SVG Icon -->
+            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                <path d="M12 24C5.385 24 0 18.615 0 12S5.385 0 12 0s12 5.385 12 12-5.385 12-12 12zm0-22c-5.514 0-10 4.486-10 10s4.486 10 10 10 10-4.486 10-10-4.486-10-10-10zm2.748 11.232c.112-.556.162-1.071.162-1.583 0-1.879-1.291-3.136-3.235-3.136-2.146 0-3.321 1.487-3.321 3.511 0 2.152 1.258 3.511 3.42 3.511 1.341 0 2.378-.504 2.87-1.391l1.328.775c-.752 1.353-2.32 2.146-4.198 2.146-3.111 0-4.992-1.954-4.992-5.041 0-2.983 1.832-5.041 4.903-5.041 2.81 0 4.73 1.777 4.73 4.659 0 .762-.075 1.52-.224 2.278l-1.444-.219zm-3.109-3.242c1.026 0 1.637.581 1.637 1.487 0 .092-.004.182-.012.271h-3.23c.068-.991.644-1.758 1.605-1.758z"/>
+            </svg>
+            <span class="font-medium tracking-wider">Threads</span>
+        </a>
+        <div></div>
+    </div>
+
+    <div x-data="shopApp()" x-init="init()" class="max-w-md mx-auto px-4 py-2">
+        
+        <!-- 中間動態活動標題 -->
+        <header class="text-center my-6">
+            <h1 class="text-xl font-medium tracking-widest text-neutral-800 uppercase" x-text="displayEventName">
+                正在載入代購活動...
+            </h1>
+            <div class="w-12 h-[1px] bg-neutral-400 mx-auto mt-3"></div>
+        </header>
+
+        <!-- 載入中狀態 -->
+        <template x-if="loading">
+            <div class="flex flex-col items-center justify-center py-20">
+                <div class="spinner mb-4"></div>
+                <p class="text-sm text-neutral-500 tracking-wider">正在載入商品...</p>
+            </div>
+        </template>
+
+        <!-- 主要網頁內容 -->
+        <template x-if="!loading">
+            <div>
+                <!-- 商品列表 -->
+                <div class="grid grid-cols-2 gap-3 mb-8">
+                    <template x-for="product in products" :key="product.id">
+                        <div class="jp-card p-2.5 flex flex-col justify-between relative overflow-hidden"
+                             :class="isProductSelected(product.id) ? 'border-neutral-800 ring-1 ring-neutral-800' : ''">
+                            
+                            <!-- 商品圖片 -->
+                            <div class="w-full aspect-square bg-neutral-50 rounded mb-2 overflow-hidden relative">
+                                <img :src="product.photo" class="w-full h-full object-cover" alt="Product Image">
+                            </div>
+
+                            <!-- 商品資訊 -->
+                            <div class="flex-1 flex flex-col justify-between">
+                                <div>
+                                    <h3 class="text-xs font-medium text-neutral-800 line-clamp-2 leading-tight" x-text="product.name"></h3>
+                                    <p class="text-xs font-bold text-neutral-700 mt-1">HK$ <span x-text="product.price"></span></p>
+                                </div>
+
+                                <!-- 款式選取區域 (可複選) -->
+                                <div class="mt-2 pt-2 border-t border-dashed border-neutral-100">
+                                    <p class="text-[10px] text-neutral-400 mb-1">款式選擇 (可複選):</p>
+                                    <div class="space-y-1 max-h-24 overflow-y-auto pr-1">
+                                        <template x-for="sub in product.subs" :key="sub">
+                                            <div class="flex items-center justify-between bg-neutral-50 p-1 rounded text-[11px]">
+                                                <label class="flex items-center space-x-1 flex-1 cursor-pointer truncate">
+                                                    <input type="checkbox" 
+                                                           :checked="isSubChecked(product.id, sub)"
+                                                           @change="toggleSub(product, sub)"
+                                                           class="rounded text-neutral-800 focus:ring-0 w-3 h-3">
+                                                    <span class="truncate text-neutral-600" x-text="sub"></span>
+                                                </label>
+                                                
+                                                <!-- 數量選擇器 (勾選後顯示) -->
+                                                <template x-if="isSubChecked(product.id, sub)">
+                                                    <div class="flex items-center space-x-1 ml-1 bg-white border border-neutral-200 rounded">
+                                                        <button @click="changeQty(product.id, sub, -1)" class="px-1 text-neutral-500 hover:bg-neutral-100 font-bold">-</button>
+                                                        <span class="text-[10px] w-3 text-center font-medium" x-text="getQty(product.id, sub)"></span>
+                                                        <button @click="changeQty(product.id, sub, 1)" class="px-1 text-neutral-500 hover:bg-neutral-100 font-bold">+</button>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- 收件人與電話表單 -->
+                <div class="jp-card p-4 space-y-4 mb-6">
+                    <h2 class="text-sm font-medium border-l-2 border-neutral-700 pl-2 text-neutral-800 tracking-wider">收件人資料</h2>
+                    
+                    <div>
+                        <label class="block text-xs text-neutral-500 mb-1">收件人姓名 *</label>
+                        <input type="text" x-model="form.name" placeholder="請輸入姓名" class="w-full jp-input px-3 py-2 text-sm">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-neutral-500 mb-1">聯絡電話 *</label>
+                        <input type="tel" inputmode="numeric" x-model="form.phone" @input="form.phone = form.phone.replace(/\D/g,'').substring(0,8)" placeholder="請輸入可收取SMS嘅手機號碼" class="w-full jp-input px-3 py-2 text-sm">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-neutral-500 mb-1">電子郵件 *</label>
+                        <input type="email" x-model="form.email" placeholder="請輸入電子郵件地址 (用於接收付款資料及訂單確認信)" class="w-full jp-input px-3 py-2 text-sm">
+                    </div>
+                </div>
+
+                <!-- 易寄取自提點連動篩選器 -->
+                <div class="jp-card p-4 space-y-4 mb-6">
+                    <h2 class="text-sm font-medium border-l-2 border-neutral-700 pl-2 text-neutral-800 tracking-wider">易寄取收件地址</h2>
+                    
+                    <div>
+                        <label class="block text-xs text-neutral-500 mb-1">搜尋門市 (可輸入編號或名稱, 輸入後於下方選擇自提點地址)</label>
+                        <input type="text" x-model="addressSearch" placeholder="例如: 7-Eleven / 旺角 / HK001" class="w-full jp-input px-3 py-2 text-sm">
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2">
+                        <div>
+                            <label class="block text-[10px] text-neutral-400 mb-1">類別</label>
+                            <select x-model="filter.type" @change="resetAddressCascade('type')" class="w-full jp-input p-1.5 text-xs bg-white">
+                                <option value="">全部</option>
+                                <option value="郵政局">郵政局</option>
+                                <option value="智郵站">智郵站</option>
+                                <option value="7-Eleven">7-Eleven</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-neutral-400 mb-1">地區</label>
+                            <select x-model="filter.region" @change="resetAddressCascade('region')" class="w-full jp-input p-1.5 text-xs bg-white">
+                                <option value="">全部</option>
+                                <template x-for="r in availableRegions" :key="r">
+                                    <option :value="r" x-text="r"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] text-neutral-400 mb-1">分區</label>
+                            <select x-model="filter.district" @change="resetAddressCascade('district')" class="w-full jp-input p-1.5 text-xs bg-white">
+                                <option value="">全部</option>
+                                <template x-for="d in availableDistricts" :key="d">
+                                    <option :value="d" x-text="d"></option>
+                                </template>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs text-neutral-500 mb-1">選擇自提點地址 *</label>
+                        <select x-model="selectedAddressIndex" class="w-full jp-input p-2 text-xs bg-white max-w-full">
+                            <option value="">-- 請選擇收件地址 --</option>
+                            <template x-for="(addr, idx) in filteredAddresses" :key="idx">
+                                <option :value="addr.originalIndex" :selected="selectedAddressIndex === addr.originalIndex" x-text="`[${addr.code}] ${addr.name} - ${addr.address}`"></option>
+                            </template>
+                        </select>
+                    </div>
+
+                    <div class="bg-neutral-50 p-3 rounded border border-neutral-100 text-xs space-y-1 text-neutral-600">
+                        <p class="font-medium text-neutral-800">收件地址自動對應：</p>
+                        <p>地區：<span class="text-neutral-900 font-medium" x-text="displayAddress.region || '（尚未選擇）'"></span></p>
+                        <p>分區：<span class="text-neutral-900 font-medium" x-text="displayAddress.district || '（尚未選擇）'"></span></p>
+                        <p>地址：<span class="text-neutral-900 font-medium" x-text="displayAddress.address || '（尚未選擇）'"></span></p>
+                    </div>
+                </div>
+
+                <!-- 付款方式 -->
+                <div class="jp-card p-4 space-y-3 mb-6">
+                    <h2 class="text-sm font-medium border-l-2 border-neutral-700 pl-2 text-neutral-800 tracking-wider">付款方式</h2>
+                    <div class="flex space-x-6 px-2">
+                        <label class="flex items-center space-x-2 text-sm cursor-pointer text-neutral-700">
+                            <input type="radio" name="payment" value="PayMe" x-model="form.paymentMethod" class="text-neutral-800 focus:ring-0">
+                            <span>PayMe</span>
+                        </label>
+                        <label class="flex items-center space-x-2 text-sm cursor-pointer text-neutral-700">
+                            <input type="radio" name="payment" value="FPS" x-model="form.paymentMethod" class="text-neutral-800 focus:ring-0">
+                            <span>轉數快 (FPS)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- 固定置底已選明細與結帳控制台 -->
+                <footer class="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-200 shadow-lg z-50">
+                    <div class="max-w-md mx-auto p-4">
+                        
+                        <!-- 底部即時顯示 -->
+                        <div class="mb-3 text-xs text-neutral-600 max-h-24 overflow-y-auto border-b border-neutral-100 pb-2">
+                            <p class="font-medium text-neutral-700 mb-1">已選商品及款式明細：</p>
+                            <template x-for="item in cartItems" :key="item.id + '-' + item.sub">
+                                <div class="flex justify-between text-neutral-500 py-0.5">
+                                    <span class="truncate max-w-[280px]" x-text="`${item.name} (${item.sub}) x${item.qty}`"></span>
+                                    <span class="font-medium text-neutral-700" x-text="`HK$${item.price * item.qty}`"></span>
+                                </div>
+                            </template>
+                            <template x-if="cartItems.length === 0">
+                                <p class="text-neutral-400 italic">請在上方勾選您想購買的商品款式與數量</p>
+                            </template>
+                        </div>
+
+                        <!-- 運費與加總金額 -->
+                        <div class="flex items-center justify-between">
+                            <div class="text-left">
+                                <p class="text-[10px] text-neutral-400">
+                                    小計: HK$<span x-text="subtotal"></span> | 
+                                    郵費: <span x-text="shippingFee === 0 ? '包郵' : 'HK$'+shippingFee"></span>
+                                </p>
+                                <p class="text-lg font-bold text-neutral-800">
+                                    總金額: <span class="text-neutral-900">HK$<span x-text="totalAmount"></span></span>
+                                </p>
+                            </div>
+                            
+                            <!-- 提交訂單按鈕 -->
+                            <button @click="submitOrder()" 
+                                    :disabled="submitting || cartItems.length === 0"
+                                    class="bg-neutral-800 text-white text-sm font-medium py-2.5 px-6 rounded-md tracking-widest transition duration-150 active:bg-neutral-900 disabled:bg-neutral-300 disabled:cursor-not-allowed flex items-center space-x-2">
+                                <template x-if="submitting">
+                                    <div class="spinner !w-4 !h-4 !border-left-color-white mr-2"></div>
+                                </template>
+                                <span x-text="submitting ? '提交中...' : '確認提交訂單'"></span>
+                            </button>
+                        </div>
+                    </div>
+                </footer>
+
+            </div>
+        </template>
+    </div>
+
+    <script>
+        // 🔗 你的最新部署 Google Apps Script Web App 網址
+        const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzgsFv9_AjExH0VCh1m6DX18qTmXMKwO0xiBGQfYqvO2Q6nb5ZNeXRbsdRsbGVcFidIQw/exec";
+
+        function shopApp() {
+            return {
+                loading: true,
+                submitting: false,
+                displayEventName: '',  // 畫面上漂亮的標題（帶空格）
+                sheetEventName: '',    // 給後端 GAS 認認的分頁名稱（帶空格）
+                products: [],
+                allAddresses: [],
+                addressSearch: '',
+                selectedAddressIndex: '',
+                
+                filter: {
+                    type: '',
+                    region: '',
+                    district: ''
+                },
+                
+                form: {
+                    name: '',
+                    phone: '',
+                    email: '',
+                    paymentMethod: 'PayMe'
+                },
+                
+                cart: {},
+
+                // 🌟 智慧解碼網址函數
+                getEventNameFromURL() {
+                    try {
+                        const path = window.location.pathname; // 例如 "/0601-popup-Le-Sserafim.html"
+                        const fileName = path.substring(path.lastIndexOf('/') + 1); // "0601-popup-Le-Sserafim.html"
+                        
+                        if (!fileName || fileName === 'index.html' || fileName === '') {
+                            return "0601 popup Le Sserafim"; // 💡 當直接進入主網址時的預設活動分頁
+                        }
+                        
+                        // 移除結尾的 .html，並把所有橫線 "-" 全面轉換回空格 " "
+                        let nameClean = fileName.replace(/\.html$/i, '').replace(/-/g, ' ');
+                        return nameClean.trim();
+                    } catch (e) {
+                        return "0601 popup Le Sserafim";
+                    }
+                },
+
+                async init() {
+                    try {
+                        // 1. 自動從 Vercel 網址撈取當前應該讀哪個活動分頁
+                        this.sheetEventName = this.getEventNameFromURL();
+                        this.displayEventName = this.sheetEventName;
+                        
+                        // 2. 動態變更瀏覽器標籤頁上的 Title 標題
+                        window.dispatchEvent(new CustomEvent('set-title', { detail: `代購 ${this.displayEventName} - 852hk.81jp` }));
+
+                        // 3. 帶上 ?event=活動名稱 參數向 GAS 索取特定分頁商品資料
+                        const fetchUrl = `${GAS_API_URL}?event=${encodeURIComponent(this.sheetEventName)}`;
+                        const response = await fetch(fetchUrl);
+                        const data = await response.json();
+                        
+                        this.products = data.products;
+                        this.allAddresses = data.addresses.map((item, index) => {
+                            item.originalIndex = index;
+                            return item;
+                        });
+                    } catch (error) {
+                        console.error("無法加載動態資料:", error);
+                        alert("讀取商品資料失敗，請確認 Google Sheet 中是否有建立與網址同名的分頁。");
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                isProductSelected(productId) {
+                    return Object.keys(this.cart).some(key => key.startsWith(productId + '_'));
+                },
+                isSubChecked(productId, sub) {
+                    return !!this.cart[productId + '_' + sub];
+                },
+                toggleSub(product, sub) {
+                    const key = product.id + '_' + sub;
+                    if (this.cart[key]) {
+                        delete this.cart[key];
+                    } else {
+                        this.cart[key] = {
+                            id: product.id,
+                            name: product.name,
+                            sub: sub,
+                            price: product.price,
+                            yen: product.yen || 0, 
+                            qty: 1
+                        };
+                    }
+                    this.cart = { ...this.cart };
+                },
+                getQty(productId, sub) {
+                    return this.cart[productId + '_' + sub]?.qty || 0;
+                },
+                changeQty(productId, sub, amount) {
+                    const key = productId + '_' + sub;
+                    if (!this.cart[key]) return;
+                    this.cart[key].qty += amount;
+                    if (this.cart[key].qty < 1) this.cart[key].qty = 1;
+                    this.cart = { ...this.cart };
+                },
+                
+                get cartItems() {
+                    return Object.values(this.cart);
+                },
+                get subtotal() {
+                    return this.cartItems.reduce((sum, item) => sum + (item.price * item.qty), 0);
+                },
+                get shippingFee() {
+                    if (this.cartItems.length === 0) return 0;
+                    return this.subtotal >= 500 ? 0 : 10;
+                },
+                get totalAmount() {
+                    return this.subtotal + this.shippingFee;
+                },
+
+                get availableRegions() {
+                    let set = new Set();
+                    this.allAddresses.forEach(a => {
+                        if (!this.filter.type || a.type === this.filter.type) set.add(a.region);
+                    });
+                    return Array.from(set);
+                },
+                get availableDistricts() {
+                    let set = new Set();
+                    this.allAddresses.forEach(a => {
+                        if ((!this.filter.type || a.type === this.filter.type) && 
+                            (!this.filter.region || a.region === this.filter.region)) {
+                            set.add(a.district);
+                        }
+                    });
+                    return Array.from(set);
+                },
+                get filteredAddresses() {
+                    let search = this.addressSearch.trim().toLowerCase();
+                    
+                    return this.allAddresses.filter(a => {
+                        if (this.filter.type && a.type !== this.filter.type) return false;
+                        if (this.filter.region && a.region !== this.filter.region) return false;
+                        if (this.filter.district && a.district !== this.filter.district) return false;
+                        
+                        if (search) {
+                            let matchCode = a.code.toLowerCase().includes(search);
+                            let matchName = a.name.toLowerCase().includes(search);
+                            let matchAddr = a.address.toLowerCase().includes(search);
+                            if (!matchCode && !matchName && !matchAddr) return false;
+                        }
+                        return true;
+                    });
+                },
+                resetAddressCascade(level) {
+                    if (level === 'type') { this.filter.region = ''; this.filter.district = ''; }
+                    if (level === 'region') { this.filter.district = ''; }
+                    this.addressSearch = ''; 
+                    this.selectedAddressIndex = '';
+                },
+                get displayAddress() {
+                    if (this.selectedAddressIndex === '') return {};
+                    return this.allAddresses[this.selectedAddressIndex] || {};
+                },
+
+                async submitOrder() {
+                    if (this.cartItems.length === 0) {
+                        alert("購物車內無商品，請先選擇款式。");
+                        return;
+                    }
+                    if (!this.form.name.trim()) {
+                        alert("請輸入收件人姓名。");
+                        return;
+                    }
+                    if (!/^\d{8}$/.test(this.form.phone)) {
+                        alert("聯絡電話格式不正確，請輸入 8 位數字。");
+                        return;
+                    }
+                    if (!this.form.email.trim()) {
+                        alert("請輸入電子郵件地址。");
+                        return;
+                    }
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(this.form.email.trim())) {
+                        alert("電子郵件格式不正確，請重新檢查。");
+                        return;
+                    }
+                    if (this.selectedAddressIndex === '') {
+                        alert("請選擇易寄取收件門市地址。");
+                        return;
+                    }
+
+                    this.submitting = true;
+
+                    let grouped = {};
+                    let totalJPYAmount = 0; 
+
+                    this.cartItems.forEach(item => {
+                        if (!grouped[item.name]) grouped[item.name] = [];
+                        grouped[item.name].push(`${item.sub} x${item.qty}`);
+                        
+                        const itemYen = parseFloat(item.yen) || 0; 
+                        totalJPYAmount += itemYen * item.qty;
+                    });
+
+                    let itemsSummary = Object.keys(grouped).map(name => {
+                        return `${name} (${grouped[name].join(', ')})`;
+                    }).join(', ');
+
+                    // 📦 這裡會把當前網址解碼出來的「活動名稱」一起送到後端，確保訂單被記到正確活動
+                    const payload = {
+                        eventName: this.sheetEventName, 
+                        itemsSummary: itemsSummary,
+                        totalAmount: this.totalAmount,
+                        shippingFee: this.shippingFee,
+                        paymentMethod: this.form.paymentMethod,
+                        totalJPYAmount: totalJPYAmount,
+                        recipientName: this.form.name,
+                        recipientPhone: this.form.phone,
+                        recipientEmail: this.form.email.trim(),
+                        pickupType: this.displayAddress.type,
+                        pickupCode: this.displayAddress.code,
+                        pickupName: this.displayAddress.name,
+                        pickupAddress: this.displayAddress.address
+                    };
+
+                    try {
+                        await fetch(GAS_API_URL, {
+                            method: 'POST',
+                            mode: 'no-cors',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+                        
+                        alert(`🎉 訂單提交成功！\n\n付款方式: ${this.form.paymentMethod}\n應付總額: HK$${this.totalAmount}\n\n訂購詳情及付款資料已Email到: ${this.form.email.trim()}\n\n我哋收取款項之後會為客人完成訂購，謝謝！`);
+                        
+                        this.cart = {};
+                        this.form.name = '';
+                        this.form.phone = '';
+                        this.form.email = ''; 
+                        this.selectedAddressIndex = '';
+                        this.addressSearch = '';
+                        this.filter.type = '';
+                        this.filter.region = '';
+                        this.filter.district = '';
+                    } catch (error) {
+                        console.error("提交訂單時出錯:", error);
+                        alert("系統忙碌中或網路傳輸錯誤，請稍後再試。");
+                    } finally {
+                        this.submitting = false;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
