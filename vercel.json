@@ -1,9 +1,8 @@
-```json
-   {
-     "rewrites": [
-       {
-         "source": "/(.*).html",
-         "destination": "/shop.html"
-       }
-     ]
-   }
+{
+  "rewrites": [
+    {
+      "source": "/:eventName(.html)?",
+      "destination": "/shop.html"
+    }
+  ]
+}
