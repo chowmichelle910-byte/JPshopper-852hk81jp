@@ -1,7 +1,8 @@
 {
+  "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/:eventName(.html)?",
+      "source": "/:eventName",
       "destination": "/shop.html"
     }
   ]
