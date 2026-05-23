@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>現場快閃代購大廳 - 852hk.81jp</title>
+  <style>
+    :root {
+      --bg-color: #fbfbfa;
+      --card-bg: #ffffff;
+      --text-main: #111111;
+      --text-muted: #666666;
+      --border-color: #eef0ed;
+      --primary: #111111;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      margin: 0;
+      padding: 40px 16px;
+      color: var(--text-main);
+      -webkit-font-smoothing: antialiased;
+    }
+    
+    .lobby-container {
+      max-width: 480px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    
+    header {
+      margin-bottom: 40px;
+    }
+    
+    h1 {
+      font-size: 22px;
+      font-weight: 500;
+      letter-spacing: 2px;
+      margin: 0;
+      text-transform: uppercase;
+    }
+    
+    .divider {
+      wIdth: 40px;
+      height: 1px;
+      background-color: #999999;
+      margin: 16px auto;
+    }
+    
+    .subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      letter-spacing: 1px;
+    }
+    
+    /* 活動列表卡片 */
+    .event-list {
+      display: flex;
+      flex-drction: column;
+      gap: 14px;
+    }
+    
+    .event-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 18px 20px;
+      text-align: left;
+      text-decoration: none;
+      color: var(--text-main);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.01);
+      transition: all 0.25s ease;
+      cursor: pointer;
+    }
+    
+    .event-card:hover {
+      border-color: var(--primary);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+      transform: translateY(-1px);
+    }
+    
+    .event-name {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    
+    .event-status {
+      font-size: 11px;
+      color: #10b981;
+      background-color: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+    
+    .arrow {
+      font-size: 14px;
+      color: #cccccc;
+      transition: color 0.2s;
+    }
+    
+    .event-card:hover .arrow {
+      color: var(--primary);
+    }
+    
+    /* Loading 狀態 */
+    .loading-box {
+      padding: 40px 0;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    
+    .spinner {
+      border: 2px solid rgba(0, 0, 0, 0.05);
+      wIdth: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border-left-color: var(--primary);
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 12px auto;
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div class="lobby-container">
+  <header>
+    <h1>852hk.81jp</h1>
+    <div class="divider"></div>
+    <div class="subtitle">現正進行中的現場快閃代購</div>
+  </header>
+  
+  <!-- 載入中狀態 -->
+  <div id="loading" class="loading-box">
+    <div class="spinner"></div>
+    <span>正在獲取最新快閃活動...</span>
+  </div>
+  
+  <!-- 活動清單容器 -->
+  <div id="eventList" class="event-list" style="display: none;">
+    <!-- 由 JavaScript 自動動態生成卡片 -->
+  </div>
+</div>
+
+<script>
+  // 🔗 請換成你部署好、最新的 GAS 網址
+  var GAS_API_URL = "https://script.google.com/macros/s/AKfycbzgsFv9_AjExH0VCh1m6DX18qTmXMKwO0xiBGQfYqvO2Q6nb5ZNeXRbsdRsbGVcFidIQw/exec";
+
+  window.onload = function() {
+    loadActiveEvents();
+  };
+
+  function loadActiveEvents() {
+    // 💡 向 GAS 發送 action=getSheets 請求，請確保你的 GAS 裡有支援這個 API 動作
+    fetch(GAS_API_URL + "?action=getSheets")
+      .then(response => response.json())
+      .then(sheets => {
+        document.getElementById("loading").style.display = "none";
+        var listContainer = document.getElementById("eventList");
+        listContainer.innerHTML = "";
+        listContainer.style.display = "flex";
+
+        // 系統黑名單：這些分頁不是代購活動，要自動過濾排除
+        var blacklist = ["基本資料", "易寄取", "訂單總表", "Sheet1", "工作表1"];
+        
+        var hasEvent = false;
+
+        sheets.forEach(sheetName => {
+          // 如果分頁名稱不在黑名單中，就渲染出來
+          if (blacklist.indexOf(sheetName) === -1) {
+            hasEvent = true;
+            
+            // 🌟 核心轉換：把試算表裡的空格 " " 轉換為網址專用的橫線 "-"
+            var urlFriendlyName = sheetName.replace(/\s+/g, '-');
+            // 跳轉目標網址（例如：0601-abc.html）
+            var targetUrl = window.location.origin + "/" + urlFriendlyName + ".html";
+
+            var a = document.createElement("a");
+            a.className = "event-card";
+            a.href = targetUrl;
+            
+            a.innerHTML = `
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span class="event-name">${sheetName}</span>
+                <span class="event-status">進行中</span>
+              </div>
+              <span class="arrow">➔</span>
+            `;
+            
+            listContainer.appendChild(a);
+          }
+        });
+
+        if (!hasEvent) {
+          listContainer.innerHTML = "<div style='color:#999; font-size:14px; padding:20px;'>📭 暫時沒有進行中的快閃代購活動。</div>";
+        }
+      })
+      .catch(err => {
+        document.getElementById("loading").innerHTML = "<span style='color:#ff4d4d;'>❌ 無法連線至後台，請確認 GAS 網址是否正確。</span>";
+        console.error(err);
+      });
+  }
+</script>
+
+</body>
+</html>
