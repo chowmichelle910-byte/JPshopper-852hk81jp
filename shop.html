@@ -209,7 +209,7 @@
                         <select x-model="selectedAddressIndex" class="w-full jp-input p-2 text-xs bg-white max-w-full">
                             <option value="">-- 請選擇收件地址 --</option>
                             <template x-for="(addr, idx) in filteredAddresses" :key="idx">
-                                <option :value="addr.originalIndex" :selected="selectedAddressIndex === addr.originalIndex" x-text="`[${addr.code}] ${addr.name} - ${addr.address}`"></option>
+                                <option :value="addr.originalIndex" :selected="Number(selectedAddressIndex) === addr.originalIndex" x-text="`[${addr.code}] ${addr.name} - ${addr.address}`"></option>
                             </template>
                         </select>
                     </div>
@@ -285,7 +285,7 @@
     </div>
 
     <script>
-        // 🔗 你的最新部署 Google Apps Script Web App 網址
+        // 🔗 最新部署 Google Apps Script Web App 網址
         const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzgsFv9_AjExH0VCh1m6DX18qTmXMKwO0xiBGQfYqvO2Q6nb5ZNeXRbsdRsbGVcFidIQw/exec";
 
         function shopApp() {
@@ -314,7 +314,7 @@
                 
                 cart: {},
 
-                // 🌟 核心修正：智慧解析網址路徑，不含任何死文字，提取失敗或遇到空白網址直接回傳空字串 ""
+                // 🌟 核心修正：智慧解析網址路徑，提取失敗或遇到空白網址直接回傳空字串 ""
                 getEventNameFromURL() {
                     try {
                         const path = window.location.pathname; 
@@ -345,7 +345,7 @@
 
                 async init() {
                     try {
-                        // 1. 自動從 Vercel 網址撈取當前應該讀哪個活動分頁
+                        // 1. 自動從網址撈取當前應該讀哪個活動分頁
                         this.sheetEventName = this.getEventNameFromURL();
                         this.displayEventName = this.sheetEventName;
                         
@@ -459,11 +459,19 @@
                         return true;
                     });
                 },
+                
+                // 🌟 優化連動邏輯：改動篩選條件時，如果目前選取的地址依然符合新條件，就不予強行清空
                 resetAddressCascade(level) {
                     if (level === 'type') { this.filter.region = ''; this.filter.district = ''; }
                     if (level === 'region') { this.filter.district = ''; }
-                    this.addressSearch = ''; 
-                    this.selectedAddressIndex = '';
+                    
+                    // 檢查當前選取的地址是否還在過濾後的名單中
+                    if (this.selectedAddressIndex !== '') {
+                        const stillExists = this.filteredAddresses.some(a => a.originalIndex === Number(this.selectedAddressIndex));
+                        if (!stillExists) {
+                            this.selectedAddressIndex = '';
+                        }
+                    }
                 },
                 get displayAddress() {
                     if (this.selectedAddressIndex === '') return {};
@@ -514,7 +522,6 @@
                         return `${name} (${grouped[name].join(', ')})`;
                     }).join(', ');
 
-                    // 📦 這裡會把全動態抓取的活動名稱一起送到後端
                     const payload = {
                         eventSheetName: this.sheetEventName, 
                         itemsSummary: itemsSummary,
