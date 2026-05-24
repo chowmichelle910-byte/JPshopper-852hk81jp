@@ -146,7 +146,7 @@
                 </div>
 
                 <!-- 收件人與電話表單 -->
-                <div class="jp-card p-4 space-y-4 mb-6">
+                <div id="recipient-section" class="jp-card p-4 space-y-4 mb-6 scroll-mt-4">
                     <h2 class="text-sm font-medium border-l-2 border-neutral-700 pl-2 text-neutral-800 tracking-wider">收件人資料</h2>
                     
                     <div>
@@ -235,6 +235,23 @@
                             <span>轉數快 (FPS)</span>
                         </label>
                     </div>
+                </div>
+
+                <!-- 右下角懸浮購物車結帳按鈕 -->
+                <div class="fixed bottom-28 right-4 z-40">
+                    <button @click="scrollToRecipient()" 
+                            class="bg-neutral-800 hover:bg-neutral-900 text-white p-3.5 rounded-full shadow-xl flex items-center justify-center transition-all duration-200 transform active:scale-95 relative group">
+                        <!-- 購物車日系圖標 (SVG) -->
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 0a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                        <!-- 數字氣泡 (購物車有東西時才顯示) -->
+                        <template x-if="cartItems.length > 0">
+                            <span class="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold h-5 w-5 rounded-full flex items-center justify-center animate-pulse"
+                                  x-text="cartItems.reduce((sum, item) => sum + item.qty, 0)">
+                            </span>
+                        </template>
+                    </button>
                 </div>
 
                 <!-- 固定置底已選明細與結帳控制台 -->
@@ -361,7 +378,8 @@
                         window.dispatchEvent(new CustomEvent('set-title', { detail: `代購 ${this.displayEventName} - 852hk.81jp` }));
 
                         // 3. 帶上 ?event=活動名稱 參數向 GAS 索取特定分頁商品資料
-                        const fetchUrl = `${GAS_API_URL}?event=${encodeURIComponent(this.sheetEventName)}`;
+                        // ✨ 加上時間戳記避免瀏覽器強烈快取 (Cache)，修正 A 活動載入 B 商品的問題
+                        const fetchUrl = `${GAS_API_URL}?event=${encodeURIComponent(this.sheetEventName)}&_=${Date.now()}`;
                         const response = await fetch(fetchUrl);
                         const data = await response.json();
                         
@@ -375,6 +393,14 @@
                         alert("讀取商品資料失敗，請確認 Google Sheet 中是否有建立與網址同名的分頁。");
                     } finally {
                         this.loading = false;
+                    }
+                },
+
+                // 🎯 一鍵平滑跳轉到收件人資料區塊
+                scrollToRecipient() {
+                    const el = document.getElementById('recipient-section');
+                    if (el) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
                     }
                 },
 
