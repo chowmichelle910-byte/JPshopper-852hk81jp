@@ -42,7 +42,7 @@
     }
     
     .divider {
-      wIdth: 40px;
+      width: 40px;
       height: 1px;
       background-color: #999999;
       margin: 16px auto;
@@ -57,7 +57,7 @@
     /* 活動列表卡片 */
     .event-list {
       display: flex;
-      flex-drction: column;
+      flex-direction: column;
       gap: 14px;
     }
     
@@ -118,7 +118,7 @@
     
     .spinner {
       border: 2px solid rgba(0, 0, 0, 0.05);
-      wIdth: 20px;
+      width: 20px;
       height: 20px;
       border-radius: 50%;
       border-left-color: var(--primary);
@@ -150,7 +150,6 @@
 </div>
 
 <script>
-  // 🔗 請換成你部署好、最新的 GAS 網址
   var GAS_API_URL = "https://script.google.com/macros/s/AKfycbzgsFv9_AjExH0VCh1m6DX18qTmXMKwO0xiBGQfYqvO2Q6nb5ZNeXRbsdRsbGVcFidIQw/exec";
 
   window.onload = function() {
@@ -158,7 +157,6 @@
   };
 
   function loadActiveEvents() {
-    // 💡 向 GAS 發送 action=getSheets 請求，請確保你的 GAS 裡有支援這個 API 動作
     fetch(GAS_API_URL + "?action=getSheets")
       .then(response => response.json())
       .then(sheets => {
@@ -167,20 +165,19 @@
         listContainer.innerHTML = "";
         listContainer.style.display = "flex";
 
-        // 系統黑名單：這些分頁不是代購活動，要自動過濾排除
         var blacklist = ["Blank", "易寄取地址", "訂單紀錄", "Sheet1", "工作表1"];
-        
         var hasEvent = false;
 
         sheets.forEach(sheetName => {
-          // 如果分頁名稱不在黑名單中，就渲染出來
           if (blacklist.indexOf(sheetName) === -1) {
             hasEvent = true;
             
             // 🌟 核心轉換：把試算表裡的空格 " " 轉換為網址專用的橫線 "-"
             var urlFriendlyName = sheetName.replace(/\s+/g, '-');
-            // 跳轉目標網址（例如：0601-abc.html）
-            var targetUrl = window.location.origin + "/" + urlFriendlyName + ".html";
+            
+            // 🚀 【雙重保險修正】：跳轉時，網址後方強制攜帶「?event=原始活動名稱」參數
+            // 這樣不論使用者點擊哪一個，進去後都能藉由 URL 參數精準找到工作表，絕不抓錯
+            var targetUrl = window.location.origin + "/" + urlFriendlyName + ".html?event=" + encodeURIComponent(sheetName);
 
             var a = document.createElement("a");
             a.className = "event-card";
