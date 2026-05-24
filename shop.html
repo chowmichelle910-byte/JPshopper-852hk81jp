@@ -314,26 +314,26 @@
                 
                 cart: {},
 
-                // 🌟 核心修正：智慧解析網址路徑，提取失敗或遇到空白網址直接回傳空字串 ""
+                // 🚀 【升級版】智慧解析網址路徑函式
                 getEventNameFromURL() {
                     try {
                         const path = window.location.pathname; 
                         
-                        // 取得網址最後一段路徑
+                        // 取得網址最後一段檔名（例如：0601-popup-Le-Sserafim.html）
                         let fileName = path.substring(path.lastIndexOf('/') + 1); 
                         
-                        // 如果是首頁、乾淨域名或直接開到 shop.html 等不帶活動參數的情況，直接回傳空字串
+                        // 如果是首頁、乾淨域名或直接開到未帶參數的 index.html、shop.html，回傳空字串
                         if (!fileName || fileName === 'index.html' || fileName === 'shop.html') {
                             return ""; 
                         }
                         
-                        // 1. 解碼網址（處理中文字或特殊符號轉碼）
+                        // 1. 解碼網址（確保能處理中文字或特殊符號轉碼）
                         let nameClean = decodeURIComponent(fileName);
                         
-                        // 2. 移除結尾可能存在的 .html 後綴
+                        // 2. 移除結尾可能存在的 .html 後綴（不分大小寫）
                         nameClean = nameClean.replace(/\.html$/i, '');
                         
-                        // 3. 把所有橫線 "-" 還原回空格 " "
+                        // 3. ✨ 核心轉換：將所有的減號 "-" 精準替換為空格 " "
                         nameClean = nameClean.replace(/-/g, ' ');
                         
                         return nameClean.trim(); 
@@ -460,12 +460,10 @@
                     });
                 },
                 
-                // 🌟 優化連動邏輯：改動篩選條件時，如果目前選取的地址依然符合新條件，就不予強行清空
                 resetAddressCascade(level) {
                     if (level === 'type') { this.filter.region = ''; this.filter.district = ''; }
                     if (level === 'region') { this.filter.district = ''; }
                     
-                    // 檢查當前選取的地址是否還在過濾後的名單中
                     if (this.selectedAddressIndex !== '') {
                         const stillExists = this.filteredAddresses.some(a => a.originalIndex === Number(this.selectedAddressIndex));
                         if (!stillExists) {
