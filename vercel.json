@@ -1,6 +1,8 @@
 {
   "routes": [
     { "handle": "filesystem" },
-    { "src": "/(.*)", "dest": "/shop.html" }
+    { "src": "/zh-hk/(.*)", "dest": "/shop-hk.html" },
+    { "src": "/zh-tw/(.*)", "dest": "/shop-tw.html" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
