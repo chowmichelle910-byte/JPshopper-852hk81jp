@@ -15,8 +15,9 @@
       --danger: #ff4d4d;
       --success: #10b981;
       --accent: #0284c7;
+      --hk: #c0392b;
+      --tw: #2980b9;
     }
-    
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background-color: var(--bg-color);
@@ -25,237 +26,74 @@
       color: var(--text-main);
       -webkit-font-smoothing: antialiased;
     }
-    
-    /* 預設隱藏整個主容器，密碼正確才顯示 */
-    .container {
-      display: none; 
-      max-width: 1000px;
-      margin: 0 auto;
-      background: var(--card-bg);
-      padding: 24px 20px;
-      border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.03);
-    }
-    
-    .header-area {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid var(--border-color);
-      padding-bottom: 16px;
-      margin-bottom: 20px;
-    }
-    
-    h2 {
-      margin: 0;
-      font-size: 20px;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-    }
+    .container { display: none; max-width: 1060px; margin: 0 auto; background: var(--card-bg); padding: 24px 20px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
+    .header-area { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px; }
+    h2 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: 0.5px; }
+    h3 { margin-top: 0; margin-bottom: 12px; font-size: 14px; color: #333; font-weight: 600; }
+    .refresh-btn { background: none; border: 1px solid #ccc; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; }
+    .refresh-btn:hover { background: #f2f2f2; border-color: var(--primary); }
 
-    h3 {
-      margin-top: 0;
-      margin-bottom: 12px;
-      font-size: 14px;
-      color: #333333;
-      font-weight: 600;
-    }
-    
-    .refresh-btn {
-      background: none;
-      border: 1px solid #ccc;
-      padding: 6px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 500;
-      transition: all 0.2s;
-    }
-    .refresh-btn:hover {
-      background: #f2f2f2;
-      border-color: var(--primary);
-    }
+    /* Tools */
+    .tools-panel { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 30px; }
+    .tool-card { background: #fafafa; padding: 16px; border-radius: 8px; border: 1px solid var(--border-color); box-sizing: border-box; }
+    .tool-card-left { flex: 1; min-width: 260px; }
+    .tool-card-right { flex: 2; min-width: 320px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .full-width { grid-column: span 2; }
+    input[type="text"], input[type="number"] { width: 100%; padding: 8px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; box-sizing: border-box; outline: none; transition: border-color 0.2s; }
+    input[type="text"]:focus, input[type="number"]:focus { border-color: var(--primary); }
 
-    /* 🛠️ 工具面板樣式 */
-    .tools-panel {
-      display: flex;
-      gap: 20px;
-      flex-wrap: wrap;
-      margin-bottom: 30px;
-    }
+    /* Tabs */
+    .tab-bar { display: flex; gap: 0; border-bottom: 2px solid var(--border-color); margin-bottom: 20px; }
+    .tab-btn { padding: 10px 24px; font-size: 13px; font-weight: 600; border: none; background: none; cursor: pointer; color: var(--text-muted); border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.2s; letter-spacing: 0.5px; }
+    .tab-btn:hover { color: var(--text-main); }
+    .tab-btn.active-hk { color: var(--hk); border-bottom-color: var(--hk); }
+    .tab-btn.active-tw { color: var(--tw); border-bottom-color: var(--tw); }
+    .tab-count { display: inline-block; background: #f0efec; color: #666; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 10px; margin-left: 6px; }
 
-    .tool-card {
-      background: #fafafa;
-      padding: 16px;
-      border-radius: 8px;
-      border: 1px solid var(--border-color);
-      box-sizing: border-box;
-    }
+    /* Table */
+    .table-responsive { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th, td { padding: 14px 12px; font-size: 13px; border-bottom: 1px solid var(--border-color); vertical-align: top; }
+    th { background-color: #fafafa; color: var(--text-muted); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .overdue { color: var(--danger); font-weight: 600; background-color: #fff5f5; padding: 2px 6px; border-radius: 4px; display: inline-block; }
+    .event-badge { display: inline-block; background-color: #f1f3f5; color: #495057; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 500; margin-bottom: 4px; }
+    .region-badge { display: inline-block; padding: 2px 7px; border-radius: 10px; font-size: 10px; font-weight: 700; margin-left: 4px; }
+    .region-badge.hk { background: #fde8e8; color: var(--hk); }
+    .region-badge.tw { background: #e3f2fd; color: var(--tw); }
+    .btn { padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: background 0.2s, transform 0.1s; white-space: nowrap; text-align: center; }
+    .btn:active { transform: scale(0.97); }
+    .btn-unpaid { background-color: var(--primary); color: white; }
+    .btn-unpaid:hover { background-color: #333; }
+    .btn-paid { background-color: #f0fdf4; color: var(--success); border: 1px solid #bbf7d0; cursor: default; }
+    .btn-paid:active { transform: none; }
+    .btn-accent { background-color: var(--accent); color: white; }
+    .btn-accent:hover { background-color: #0369a1; }
+    .loading { text-align: center; padding: 40px 20px; font-size: 15px; color: var(--text-muted); }
+    .customer-info { line-height: 1.4; }
+    .customer-name { font-weight: 600; }
+    .customer-meta { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
+    .empty-msg { text-align: center; padding: 40px; color: #bbb; font-size: 14px; }
 
-    .tool-card-left {
-      flex: 1;
-      min-width: 260px;
-    }
-
-    .tool-card-right {
-      flex: 2;
-      min-width: 320px;
-    }
-
-    .form-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-
-    .full-width {
-      grid-column: span 2;
-    }
-
-    input[type="text"], input[type="number"] {
-      width: 100%;
-      padding: 8px 10px;
-      border: 1px solid #dddddd;
-      border-radius: 6px;
-      font-size: 13px;
-      box-sizing: border-box;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-
-    input[type="text"]:focus, input[type="number"]:focus {
-      border-color: var(--primary);
-    }
-    
-    .table-responsive {
-      width: 100%;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-    }
-    
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: left;
-    }
-    
-    th, td {
-      padding: 14px 12px;
-      font-size: 13px;
-      border-bottom: 1px solid var(--border-color);
-      vertical-align: top;
-    }
-    
-    th {
-      background-color: #fafafa;
-      color: var(--text-muted);
-      font-weight: 500;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    
-    .overdue {
-      color: var(--danger);
-      font-weight: 600;
-      background-color: #fff5f5;
-      padding: 2px 6px;
-      border-radius: 4px;
-      display: inline-block;
-    }
-
-    .event-badge {
-      display: inline-block;
-      background-color: #f1f3f5;
-      color: #495057;
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-size: 11px;
-      font-weight: 500;
-      margin-bottom: 4px;
-    }
-    
-    .btn {
-      padding: 8px 14px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 12px;
-      font-weight: 600;
-      transition: background 0.2s, transform 0.1s;
-      white-space: nowrap;
-      text-align: center;
-    }
-    .btn:active {
-      transform: scale(0.97);
-    }
-    
-    .btn-unpaid {
-      background-color: var(--primary);
-      color: white;
-    }
-    .btn-unpaid:hover {
-      background-color: #333333;
-    }
-    
-    .btn-paid {
-      background-color: #f0fdf4;
-      color: var(--success);
-      border: 1px solid #bbf7d0;
-      cursor: default;
-    }
-    .btn-paid:active {
-      transform: none;
-    }
-
-    .btn-accent {
-      background-color: var(--accent);
-      color: white;
-    }
-    .btn-accent:hover {
-      background-color: #0369a1;
-    }
-    
-    .loading {
-      text-align: center;
-      padding: 40px 20px;
-      font-size: 15px;
-      color: var(--text-muted);
-    }
-
-    .customer-info {
-      line-height: 1.4;
-    }
-    .customer-name {
-      font-weight: 600;
-    }
-    .customer-meta {
-      color: var(--text-muted);
-      font-size: 12px;
-      margin-top: 2px;
-    }
+    .hk-amount { color: var(--hk); }
+    .tw-amount { color: var(--tw); }
   </style>
 </head>
 <body>
 
-<!-- 加了密碼鎖的主畫面 -->
 <div class="container" id="adminContainer">
   <div class="header-area">
     <h2>📋 訂單核對全活動總後台</h2>
     <button class="refresh-btn" onclick="fetchOrders()">🔄 重新整理</button>
   </div>
 
-  <!-- 🛠️ 連動管理工具區塊 -->
+  <!-- 工具面板 -->
   <div class="tools-panel">
-    <!-- 功能 2：快速複製活動分頁 -->
     <div class="tool-card tool-card-left">
       <h3>🆕 快速建立活動分頁</h3>
       <input type="text" id="newEventName" placeholder="新分頁名稱 (例如: Tokyo_06)" style="margin-bottom: 12px;">
       <button class="btn btn-unpaid" onclick="createNewEvent()" style="width: 100%;">複製 Blank 建立新分頁</button>
     </div>
-
-    <!-- 功能 3：網頁端遠端上架商品 -->
     <div class="tool-card tool-card-right">
       <h3>🛍️ 網頁端遠端商品上架</h3>
       <div class="form-grid">
@@ -265,170 +103,119 @@
         <input type="number" id="prodYen" placeholder="日幣原價 (可選)">
         <input type="number" id="prodCost" placeholder="成本 HKD (可選)">
         <input type="number" id="prodPrice" placeholder="港幣售價 (必填)">
-        <input type="text" id="prodPhoto" class="full-width" placeholder="Cloudinary 圖片網址 (必填)">
+        <input type="number" id="prodTwd" placeholder="台幣售價 (可選)">
+        <input type="text" id="prodPhoto" placeholder="Cloudinary 圖片網址 (必填)">
       </div>
       <button class="btn btn-accent" onclick="addNewProduct()" style="width: 100%;">發布上架新商品 🚀</button>
     </div>
   </div>
 
   <hr style="border: none; border-top: 1px solid var(--border-color); margin: 25px 0;">
-  
+
   <div id="loading" class="loading">正在從試算表撈取最新訂單...</div>
-  
-  <div class="table-responsive">
-    <table id="orderTable" style="display: none;">
-      <thead>
-        <tr>
-          <th>訂單日期</th>
-          <th>訂單編號</th>
-          <th>客戶與自提點資訊</th>
-          <th>購買活動 / 明細摘要</th>
-          <th>港幣金額 (付款方式)</th>
-          <th>核對狀態</th>
-        </tr>
-      </thead>
-      <tbody id="orderList">
-        <!-- 資料動態生成 -->
-      </tbody>
-    </table>
+
+  <!-- HK / TW Tabs -->
+  <div id="tabSection" style="display:none;">
+    <div class="tab-bar">
+      <button class="tab-btn active-hk" id="tabHK" onclick="switchTab('hk')">
+        🇭🇰 香港訂單 <span class="tab-count" id="countHK">0</span>
+      </button>
+      <button class="tab-btn" id="tabTW" onclick="switchTab('tw')">
+        🇹🇼 台灣訂單 <span class="tab-count" id="countTW">0</span>
+      </button>
+    </div>
+
+    <!-- HK Table -->
+    <div id="panelHK">
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>訂單日期</th>
+              <th>訂單編號</th>
+              <th>客戶與自提點資訊</th>
+              <th>購買活動 / 明細摘要</th>
+              <th>港幣金額（付款方式）</th>
+              <th>核對狀態</th>
+            </tr>
+          </thead>
+          <tbody id="orderListHK"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- TW Table -->
+    <div id="panelTW" style="display:none;">
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>訂單日期</th>
+              <th>訂單編號</th>
+              <th>客戶資訊</th>
+              <th>購買活動 / 明細摘要</th>
+              <th>台幣金額（付款方式）</th>
+              <th>核對狀態</th>
+            </tr>
+          </thead>
+          <tbody id="orderListTW"></tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
-  // 🔗 最新部署 Google Apps Script Web App 網址
   var GAS_API_URL = "https://script.google.com/macros/s/AKfycbzgsFv9_AjExH0VCh1m6DX18qTmXMKwO0xiBGQfYqvO2Q6nb5ZNeXRbsdRsbGVcFidIQw/exec";
+  var currentTab = 'hk';
 
-  // 網頁開啟時，第一步先進行密碼驗證
   window.onload = function() {
-    checkPassword();
-  };
-
-  function checkPassword() {
     var password = prompt("🔒 請輸入管理員密碼：");
-    
     if (password === "4916") {
-      // 密碼正確，解鎖顯示網頁主體並抓取資料
       document.getElementById("adminContainer").style.display = "block";
       fetchOrders();
     } else {
-      // 密碼錯誤，直接跳出提示並阻斷後續所有動作
       alert("❌ 密碼錯誤，您沒有權限訪問此頁面！");
       document.body.innerHTML = "<div style='text-align:center; padding-top:100px; color:#ff4d4d; font-family:-apple-system,sans-serif; font-size:18px; font-weight:bold;'>🔒 存取遭拒，頁面已鎖定。</div>";
     }
+  };
+
+  function switchTab(region) {
+    currentTab = region;
+    document.getElementById('panelHK').style.display = region === 'hk' ? 'block' : 'none';
+    document.getElementById('panelTW').style.display = region === 'tw' ? 'block' : 'none';
+    document.getElementById('tabHK').className = 'tab-btn' + (region === 'hk' ? ' active-hk' : '');
+    document.getElementById('tabTW').className = 'tab-btn' + (region === 'tw' ? ' active-tw' : '');
   }
 
   function fetchOrders() {
     document.getElementById("loading").style.display = "block";
     document.getElementById("loading").innerText = "正在從試算表撈取最新訂單...";
-    document.getElementById("orderTable").style.display = "none";
+    document.getElementById("tabSection").style.display = "none";
 
-    // 升級：向多活動後台專用 API 動作發出請求
     fetch(GAS_API_URL + "?action=getAdminOrders")
-      .then(response => response.json())
+      .then(r => r.json())
       .then(data => {
         document.getElementById("loading").style.display = "none";
-        document.getElementById("orderTable").style.display = "table";
-        
-        var tbody = document.getElementById("orderList");
-        tbody.innerHTML = "";
+        document.getElementById("tabSection").style.display = "block";
 
-        // 後台通常需要最新訂單排在最上面
-        var orders = data.orders || data;
-        orders.reverse();
+        var orders = (data.orders || data).slice().reverse();
 
-        orders.forEach(order => {
-          var tr = document.createElement("tr");
+        // 按 pickupType（L欄）分流：含「賣貨便」→ TW，否則 → HK
+        // 輔助：付款方式含「郵局」也歸 TW
+        function isTWOrder(o) {
+          var pt = (o.pickupType || "").toString();
+          var pay = (o.payMethod || "").toString();
+          return pt.indexOf("賣貨便") !== -1 || pay.indexOf("郵局") !== -1;
+        }
+        var hkOrders = orders.filter(o => !isTWOrder(o));
+        var twOrders = orders.filter(o => isTWOrder(o));
 
-          // 1. 訂單日期 + 24小時未付紅字警告
-          var orderDate = new Date(order.date || order.timestamp);
-          var formattedDate = orderDate.getFullYear() + "-" + 
-                              padZero(orderDate.getMonth() + 1) + "-" + 
-                              padZero(orderDate.getDate()) + " " + 
-                              padZero(orderDate.getHours()) + ":" + 
-                              padZero(orderDate.getMinutes());
-          
-          var tdDate = document.createElement("td");
-          var spanDate = document.createElement("span");
-          spanDate.innerText = formattedDate;
-          
-          var now = new Date();
-          var hoursDiff = (now.getTime() - orderDate.getTime()) / (1000 * 60 * 60);
-          if (hoursDiff > 24 && order.status !== "已付款" && order.status !== "已收款") {
-            spanDate.className = "overdue";
-            spanDate.title = "已超過 24 小時未付款！";
-          }
-          tdDate.appendChild(spanDate);
-          tr.appendChild(tdDate);
+        document.getElementById("countHK").innerText = hkOrders.length;
+        document.getElementById("countTW").innerText = twOrders.length;
 
-          // 2. 訂單編號
-          var tdId = document.createElement("td");
-          tdId.style.fontFamily = "monospace";
-          tdId.style.fontWeight = "600";
-          tdId.innerText = order.id;
-          tr.appendChild(tdId);
-
-          // 3. 客戶與自提點資訊 (修正相容性欄位對接)
-          var tdCustomer = document.createElement("td");
-          tdCustomer.className = "customer-info";
-          
-          var pCode = order.pickupCode || order.pickupId || "";
-          var pName = order.pickupName || order.pickupLocation || "";
-          var pickupInfo = "（未選擇自提點）";
-          
-          if (pCode && pName) {
-            pickupInfo = `📍 [${pCode}] ${pName}`;
-          } else if (order.pickupAddress) {
-            pickupInfo = `📍 ${order.pickupAddress}`;
-          }
-          
-          tdCustomer.innerHTML = `
-            <div class="customer-name">${order.name}</div>
-            <div class="customer-meta">📱 ${order.phone}</div>
-            <div class="customer-meta" style="color:#888;">✉️ ${order.email}</div>
-            <div class="customer-meta" style="color:var(--accent); margin-top:4px; font-weight:500;">${pickupInfo}</div>
-          `;
-          tr.appendChild(tdCustomer);
-
-          // 4. 購買活動 / 明細摘要
-          var tdSummary = document.createElement("td");
-          var eventName = order.event || "現場快閃代購";
-          tdSummary.innerHTML = `
-            <div class="event-badge">${eventName}</div>
-            <div style="line-height: 1.4; color: #333;">${order.summary || order.itemsSummary || '無明細資料'}</div>
-          `;
-          tr.appendChild(tdSummary);
-
-          // 5. 金額 與 付款方式
-          var tdAmount = document.createElement("td");
-          tdAmount.style.fontWeight = "600";
-          var payMethod = order.payMethod || order.paymentMethod || "未選";
-          tdAmount.innerHTML = `
-            <div>HK$ ${order.amount || order.totalAmount}</div>
-            <div style="font-size:11px; color:var(--text-muted); font-weight:normal; margin-top:2px;">(${payMethod})</div>
-          `;
-          tr.appendChild(tdAmount);
-
-          // 6. 收款切換按鈕
-          var tdStatus = document.createElement("td");
-          var btn = document.createElement("button");
-          btn.className = "btn";
-          
-          if (order.status === "已付款" || order.status === "已收款") {
-            btn.innerText = "✓ 已收款亮燈";
-            btn.classList.add("btn-paid");
-            btn.disabled = true;
-          } else {
-            btn.innerText = "確認收款 (發信) 💰";
-            btn.classList.add("btn-unpaid");
-            btn.onclick = function() {
-              updateStatus(order.id, btn, spanDate);
-            };
-          }
-          tdStatus.appendChild(btn);
-          tr.appendChild(tdStatus);
-
-          tbody.appendChild(tr);
-        });
+        renderOrders(hkOrders, 'orderListHK', 'hk');
+        renderOrders(twOrders, 'orderListTW', 'tw');
       })
       .catch(err => {
         document.getElementById("loading").innerText = "❌ 載入失敗。請檢查 GAS 網址或試算表分頁名稱是否正確。";
@@ -436,70 +223,161 @@
       });
   }
 
-  function updateStatus(orderId, buttonComponent, spanDateComponent) {
-    if (!confirm("確認收到訂單 " + orderId + " 的款項？\n確認後系統會自動發出「已付款亮燈確認信」給客戶！")) return;
+  function renderOrders(orders, tbodyId, region) {
+    var tbody = document.getElementById(tbodyId);
+    tbody.innerHTML = "";
 
+    if (orders.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="empty-msg">目前沒有${region === 'tw' ? '台灣' : '香港'}訂單</td></tr>`;
+      return;
+    }
+
+    orders.forEach(order => {
+      var tr = document.createElement("tr");
+
+      // 1. 訂單日期
+      var orderDate = new Date(order.date || order.timestamp);
+      var formattedDate = orderDate.getFullYear() + "-" +
+                          padZero(orderDate.getMonth()+1) + "-" +
+                          padZero(orderDate.getDate()) + " " +
+                          padZero(orderDate.getHours()) + ":" +
+                          padZero(orderDate.getMinutes());
+      var tdDate = document.createElement("td");
+      var spanDate = document.createElement("span");
+      spanDate.innerText = formattedDate;
+      var hoursDiff = (Date.now() - orderDate.getTime()) / 3600000;
+      if (hoursDiff > 24 && order.status !== "已付款" && order.status !== "已收款") {
+        spanDate.className = "overdue";
+        spanDate.title = "已超過 24 小時未付款！";
+      }
+      tdDate.appendChild(spanDate);
+      tr.appendChild(tdDate);
+
+      // 2. 訂單編號
+      var tdId = document.createElement("td");
+      tdId.style.fontFamily = "monospace";
+      tdId.style.fontWeight = "600";
+      tdId.style.fontSize = "12px";
+      tdId.innerText = order.id;
+      tr.appendChild(tdId);
+
+      // 3. 客戶資訊
+      var tdCustomer = document.createElement("td");
+      tdCustomer.className = "customer-info";
+      if (region === 'hk') {
+        var pCode = order.pickupCode || "";
+        var pName = order.pickupName || "";
+        var pickupInfo = pCode && pName
+          ? `📍 [${pCode}] ${pName}`
+          : (order.pickupAddress ? `📍 ${order.pickupAddress}` : "（未選擇自提點）");
+        tdCustomer.innerHTML = `
+          <div class="customer-name">${order.name}</div>
+          <div class="customer-meta">📱 ${order.phone}</div>
+          <div class="customer-meta" style="color:#888;">✉️ ${order.email}</div>
+          <div class="customer-meta" style="color:var(--accent); margin-top:4px; font-weight:500;">${pickupInfo}</div>`;
+      } else {
+        // TW：顯示手機末3碼
+        var phone = order.phone ? order.phone.toString() : "";
+        var last3 = phone.length >= 3 ? phone.slice(-3) : phone;
+        tdCustomer.innerHTML = `
+          <div class="customer-name">${order.name}</div>
+          <div class="customer-meta">📱 ${phone} <span style="background:#e3f2fd; color:#2980b9; font-weight:700; padding:1px 6px; border-radius:4px; font-size:11px;">末3碼：${last3}</span></div>
+          <div class="customer-meta" style="color:#888;">✉️ ${order.email}</div>
+          <div class="customer-meta" style="color:var(--tw); margin-top:4px; font-weight:500;">📦 賣貨便到貨通知</div>`;
+      }
+      tr.appendChild(tdCustomer);
+
+      // 4. 購買活動 / 明細
+      var tdSummary = document.createElement("td");
+      var eventName = order.event || "現場快閃代購";
+      tdSummary.innerHTML = `
+        <div>
+          <span class="event-badge">${eventName}</span>
+          <span class="region-badge ${region}">${region === 'hk' ? '🇭🇰 HK' : '🇹🇼 TW'}</span>
+        </div>
+        <div style="line-height:1.4; color:#333; margin-top:4px;">${order.summary || order.itemsSummary || '無明細資料'}</div>`;
+      tr.appendChild(tdSummary);
+
+      // 5. 金額（HK用港幣，TW用台幣）
+      var tdAmount = document.createElement("td");
+      tdAmount.style.fontWeight = "600";
+      var payMethod = order.payMethod || order.paymentMethod || "未選";
+      var amtClass = region === 'tw' ? 'tw-amount' : 'hk-amount';
+      var currency = region === 'tw' ? 'NT$' : 'HK$';
+      tdAmount.innerHTML = `
+        <div class="${amtClass}">${currency} ${order.amount || order.totalAmount || 0}</div>
+        <div style="font-size:11px; color:var(--text-muted); font-weight:normal; margin-top:2px;">(${payMethod})</div>`;
+      tr.appendChild(tdAmount);
+
+      // 6. 核對狀態
+      var tdStatus = document.createElement("td");
+      var btn = document.createElement("button");
+      btn.className = "btn";
+      if (order.status === "已付款" || order.status === "已收款") {
+        btn.innerText = "✓ 已收款";
+        btn.classList.add("btn-paid");
+        btn.disabled = true;
+      } else {
+        btn.innerText = "確認收款 💰";
+        btn.classList.add("btn-unpaid");
+        btn.onclick = (function(oid, b, sd) {
+          return function() { updateStatus(oid, b, sd); };
+        })(order.id, btn, spanDate);
+      }
+      tdStatus.appendChild(btn);
+      tr.appendChild(tdStatus);
+
+      tbody.appendChild(tr);
+    });
+  }
+
+  function updateStatus(orderId, buttonComponent, spanDateComponent) {
+    if (!confirm("確認收到訂單 " + orderId + " 的款項？\n確認後系統會自動發出「已付款確認信」給客戶！")) return;
     buttonComponent.innerText = "處理中...";
     buttonComponent.disabled = true;
-
     fetch(GAS_API_URL, {
       method: "POST",
       mode: "no-cors",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "updatePaymentStatus",
-        orderId: orderId
-      })
+      body: JSON.stringify({ action: "updatePaymentStatus", orderId: orderId })
     })
     .then(() => {
-      buttonComponent.innerText = "✓ 已收款亮燈";
+      buttonComponent.innerText = "✓ 已收款";
       buttonComponent.className = "btn btn-paid";
       buttonComponent.onclick = null;
-      spanDateComponent.className = ""; // 移除過期紅字
+      spanDateComponent.className = "";
       alert("✓ 訂單狀態已成功變更，系統已排程發送確認信件！");
     })
     .catch(err => {
       alert("網路連線失敗，請稍後再試。");
-      buttonComponent.innerText = "確認收款 (發信) 💰";
+      buttonComponent.innerText = "確認收款 💰";
       buttonComponent.disabled = false;
       console.error(err);
     });
   }
 
-  // 🆕 呼叫功能 2：建立新活動分頁
   function createNewEvent() {
     var name = document.getElementById("newEventName").value.trim();
     if (!name) return alert("請輸入分頁名稱！");
-    
     if (!confirm(`確定要複製 Blank 模板並建立新分頁【${name}】嗎？`)) return;
-
     fetch(GAS_API_URL, {
-      method: "POST",
-      mode: "no-cors",
+      method: "POST", mode: "no-cors",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "createNewEventSheet",
-        newSheetName: name
-      })
-    })
-    .then(() => {
-      alert("🎉 建立指令已發出！由於網頁安全分流，請於 3 秒後重新整理網頁，或直接至 Google 試算表確認新分頁是否已產生。");
+      body: JSON.stringify({ action: "createNewEventSheet", newSheetName: name })
+    }).then(() => {
+      alert("🎉 建立指令已發出！請於 3 秒後至 Google 試算表確認新分頁是否已產生。");
       document.getElementById("newEventName").value = "";
-    })
-    .catch(err => alert("網路請求錯誤：" + err));
+    }).catch(err => alert("網路請求錯誤：" + err));
   }
 
-  // 🆕 呼叫功能 3：遠端上架新商品
   function addNewProduct() {
     var targetSheet = document.getElementById("prodTargetSheet").value.trim();
     var p_name = document.getElementById("prodName").value.trim();
     var p_price = document.getElementById("prodPrice").value.trim();
     var p_photo = document.getElementById("prodPhoto").value.trim();
-    
     if (!targetSheet || !p_name || !p_price || !p_photo) {
       return alert("請確實填寫必要的四項欄位：目標分頁、商品名稱、港幣售價、圖片網址！");
     }
-
     var payload = {
       action: "addNewProduct",
       targetSheet: targetSheet,
@@ -508,34 +386,24 @@
       p_yen: document.getElementById("prodYen").value || 0,
       p_cost: document.getElementById("prodCost").value || 0,
       p_price: p_price,
+      p_twd: document.getElementById("prodTwd").value || 0,
       p_photo: p_photo,
       p_weight: 0,
       p_quote: ""
     };
-
     fetch(GAS_API_URL, {
-      method: "POST",
-      mode: "no-cors",
+      method: "POST", mode: "no-cors",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
-    })
-    .then(() => {
-      alert(`🎉 商品【${p_name}】上架指令已送出！已成功填入分頁【${targetSheet}】。`);
-      // 清空商品輸入框，保留目標活動分頁方便連續上架
-      document.getElementById("prodName").value = "";
-      document.getElementById("prodSub").value = "";
-      document.getElementById("prodYen").value = "";
-      document.getElementById("prodCost").value = "";
-      document.getElementById("prodPrice").value = "";
-      document.getElementById("prodPhoto").value = "";
-    })
-    .catch(err => alert("網路請求錯誤：" + err));
+    }).then(() => {
+      alert(`🎉 商品【${p_name}】上架指令已送出！`);
+      ["prodName","prodSub","prodYen","prodCost","prodPrice","prodTwd","prodPhoto"].forEach(id => {
+        document.getElementById(id).value = "";
+      });
+    }).catch(err => alert("網路請求錯誤：" + err));
   }
 
-  function padZero(num) {
-    return num < 10 ? "0" + num : num;
-  }
+  function padZero(n) { return n < 10 ? "0" + n : n; }
 </script>
-
 </body>
 </html>
