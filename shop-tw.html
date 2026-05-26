@@ -6,7 +6,6 @@
   <title>現場快閃代購 — 852hk.81jp</title>
   <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
-  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
   <style>
     body { font-family: 'Noto Sans TC', sans-serif; background: #f7f6f3; color: #1a1a1a; -webkit-font-smoothing: antialiased; }
     .jp-card { background: #fff; border: 1px solid #e8e6e1; border-radius: 10px; transition: all 0.2s; }
@@ -385,5 +384,7 @@ function shopApp() {
   };
 }
 </script>
+<!-- Alpine.js 必須在 shopApp() 定義之後載入 -->
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </body>
 </html>
