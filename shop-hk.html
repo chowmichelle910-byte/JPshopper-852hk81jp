@@ -443,7 +443,7 @@ function shopApp() {
       };
       try {
         await fetch(GAS_API_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-        alert(`🎉 訂單提交成功！\n\n應付總額：HK$${this.totalAmount}\n確認信已寄出，多謝！`);
+        alert(`🎉 訂單提交成功！\n\n應付總額：HK$${this.totalAmount}\n確認信已寄出，我哋會於收取付款後為客人訂購。\n\n如遇缺貨，則缺貨商品全額退款。多謝！`);
         this.cart={}; this.form.name=''; this.form.phone=''; this.form.email=''; this.selectedAddressIndex='';
       } catch(e) { alert('提交失敗，請檢查網絡連線。'); }
       finally { this.submitting=false; }
