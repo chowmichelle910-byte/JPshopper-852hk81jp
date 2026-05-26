@@ -77,6 +77,58 @@
 
     .hk-amount { color: var(--hk); }
     .tw-amount { color: var(--tw); }
+
+    /* 商品管理面板 */
+    .stock-panel { background: #fafafa; border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; margin-bottom: 30px; }
+    .stock-panel-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
+    .stock-select { padding: 7px 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 13px; outline: none; background: white; min-width: 200px; }
+    .stock-select:focus { border-color: var(--primary); }
+    .stock-load-btn { padding: 7px 14px; background: var(--primary); color: white; border: none; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+    .stock-load-btn:hover { background: #333; }
+    .stock-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+    .stock-item {
+      background: white; border: 1px solid var(--border-color); border-radius: 8px;
+      padding: 10px 12px; display: flex; align-items: center; gap: 10px;
+      transition: border-color 0.2s;
+    }
+    .stock-item.modified { border-color: #f59e0b; background: #fffbeb; }
+    .stock-item.soldout { border-color: #fca5a5; background: #fff5f5; }
+    .stock-item-img { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid #eee; flex-shrink: 0; }
+    .stock-item-info { flex: 1; min-width: 0; }
+    .stock-item-name { font-size: 12px; font-weight: 600; color: #222; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .stock-item-subs { font-size: 11px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+    .stock-item-controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .stock-input { width: 52px; padding: 5px 6px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px; text-align: center; outline: none; }
+    .stock-input:focus { border-color: var(--primary); }
+    .stock-soldout-btn {
+      padding: 4px 8px; font-size: 10px; font-weight: 700;
+      border: none; border-radius: 4px; cursor: pointer; transition: all 0.15s;
+      background: #fee2e2; color: #dc2626; white-space: nowrap;
+    }
+    .stock-soldout-btn.active { background: #dc2626; color: white; }
+    .stock-soldout-btn:hover { opacity: 0.85; }
+    .stock-empty { color: #bbb; font-size: 13px; text-align: center; padding: 20px; }
+
+    /* 浮動儲存按鈕 */
+    .float-save {
+      position: fixed; bottom: 28px; right: 28px; z-index: 200;
+      display: none;
+      flex-direction: column; align-items: flex-end; gap: 8px;
+    }
+    .float-save.visible { display: flex; }
+    .float-save-badge {
+      background: #f59e0b; color: white; font-size: 11px; font-weight: 700;
+      padding: 3px 10px; border-radius: 20px;
+      box-shadow: 0 2px 8px rgba(245,158,11,0.4);
+    }
+    .float-save-btn {
+      padding: 12px 22px; background: #111; color: white;
+      border: none; border-radius: 50px; font-size: 14px; font-weight: 700;
+      cursor: pointer; box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+      transition: all 0.2s; display: flex; align-items: center; gap: 8px;
+    }
+    .float-save-btn:hover { background: #333; transform: translateY(-1px); box-shadow: 0 6px 24px rgba(0,0,0,0.3); }
+    .float-save-btn:active { transform: scale(0.97); }
   </style>
 </head>
 <body>
@@ -107,6 +159,23 @@
         <input type="text" id="prodPhoto" placeholder="Cloudinary 圖片網址 (必填)">
       </div>
       <button class="btn btn-accent" onclick="addNewProduct()" style="width: 100%;">發布上架新商品 🚀</button>
+    </div>
+  </div>
+
+  <hr style="border: none; border-top: 1px solid var(--border-color); margin: 25px 0;">
+
+  <!-- 商品庫存管理面板 -->
+  <div class="stock-panel">
+    <h3>📦 商品庫存管理（設定 stockLimit J欄）</h3>
+    <div class="stock-panel-header">
+      <select class="stock-select" id="stockSheetSelect">
+        <option value="">— 選擇活動分頁 —</option>
+      </select>
+      <button class="stock-load-btn" onclick="loadProducts()">載入商品</button>
+      <span style="font-size:11px; color:#aaa;">空白 = 無限購；填 0 = 缺貨；填數字 = 每款式限購數量</span>
+    </div>
+    <div id="stockGrid" class="stock-grid">
+      <div class="stock-empty">請選擇活動分頁後按「載入商品」</div>
     </div>
   </div>
 
@@ -165,20 +234,217 @@
   </div>
 </div>
 
+<!-- 浮動儲存按鈕 -->
+<div class="float-save" id="floatSave">
+  <div class="float-save-badge" id="floatBadge">已修改 0 項</div>
+  <button class="float-save-btn" onclick="saveStockChanges()">
+    <span>💾</span><span>確認儲存庫存</span>
+  </button>
+</div>
+
 <script>
   var GAS_API_URL = "https://script.google.com/macros/s/AKfycbzgsFv9_AjExH0VCh1m6DX18qTmXMKwO0xiBGQfYqvO2Q6nb5ZNeXRbsdRsbGVcFidIQw/exec";
   var currentTab = 'hk';
+
+  // ── 庫存管理狀態 ──
+  var stockData = [];          // 當前載入的商品資料（含原始 stockLimit）
+  var stockChanges = {};       // { row: newStockLimit } 暫存變更
+  var currentStockSheet = "";  // 當前選擇的分頁
 
   window.onload = function() {
     var password = prompt("🔒 請輸入管理員密碼：");
     if (password === "4916") {
       document.getElementById("adminContainer").style.display = "block";
       fetchOrders();
+      loadSheetList();  // 載入分頁清單到 stockSheetSelect
     } else {
       alert("❌ 密碼錯誤，您沒有權限訪問此頁面！");
       document.body.innerHTML = "<div style='text-align:center; padding-top:100px; color:#ff4d4d; font-family:-apple-system,sans-serif; font-size:18px; font-weight:bold;'>🔒 存取遭拒，頁面已鎖定。</div>";
     }
   };
+
+  // ── 載入分頁清單 ──
+  function loadSheetList() {
+    fetch(GAS_API_URL + '?action=getSheets')
+      .then(r => r.json())
+      .then(sheets => {
+        var sel = document.getElementById('stockSheetSelect');
+        var EXCLUDED = ["Blank","易寄取地址","訂單紀錄","收單截止時間"];
+        sheets.filter(n => EXCLUDED.indexOf(n) === -1).forEach(name => {
+          var opt = document.createElement('option');
+          opt.value = name;
+          opt.innerText = name;
+          sel.appendChild(opt);
+        });
+      }).catch(e => console.error(e));
+  }
+
+  // ── 載入商品 ──
+  function loadProducts() {
+    var sheetName = document.getElementById('stockSheetSelect').value;
+    if (!sheetName) return alert('請先選擇活動分頁');
+    currentStockSheet = sheetName;
+    stockChanges = {};
+    updateFloatSave();
+
+    var grid = document.getElementById('stockGrid');
+    grid.innerHTML = '<div class="stock-empty">載入中...</div>';
+
+    fetch(GAS_API_URL + '?action=getProducts&sheetName=' + encodeURIComponent(sheetName))
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) { grid.innerHTML = '<div class="stock-empty">❌ ' + data.error + '</div>'; return; }
+        stockData = data.products || [];
+        renderStockGrid();
+      })
+      .catch(e => { grid.innerHTML = '<div class="stock-empty">❌ 載入失敗</div>'; console.error(e); });
+  }
+
+  // ── 渲染商品格 ──
+  function renderStockGrid() {
+    var grid = document.getElementById('stockGrid');
+    if (stockData.length === 0) { grid.innerHTML = '<div class="stock-empty">此分頁沒有商品</div>'; return; }
+    grid.innerHTML = '';
+
+    stockData.forEach(function(p) {
+      var currentLimit = stockChanges.hasOwnProperty(p.row)
+                         ? stockChanges[p.row]
+                         : p.stockLimit;
+      var isSoldOut = currentLimit === 0;
+      var isModified = stockChanges.hasOwnProperty(p.row);
+
+      var div = document.createElement('div');
+      div.className = 'stock-item' + (isSoldOut ? ' soldout' : '') + (isModified ? ' modified' : '');
+      div.dataset.row = p.row;
+
+      var inputVal = currentLimit === null ? '' : currentLimit;
+      var fallbackImg = 'https://res.cloudinary.com/disr3dmsj/image/upload/v1776507968/uploads/2025-08/km1wihlxni7v7docvkb0.webp';
+      var imgSrc = (p.photo && p.photo.indexOf('http') === 0) ? p.photo : fallbackImg;
+
+      div.innerHTML = `
+        <img class="stock-item-img" src="${imgSrc}" onerror="this.src='${fallbackImg}'" />
+        <div class="stock-item-info">
+          <div class="stock-item-name" title="${p.name}">${p.name}</div>
+          <div class="stock-item-subs">${p.subs || '—'}</div>
+          <div style="font-size:10px; color:#bbb; margin-top:1px;">HK$${p.price} ${p.twd ? '/ NT$'+p.twd : ''}</div>
+        </div>
+        <div class="stock-item-controls">
+          <input type="number" class="stock-input" min="0"
+                 value="${inputVal}"
+                 placeholder="∞"
+                 onchange="onStockChange(${p.row}, this.value)"
+                 oninput="onStockChange(${p.row}, this.value)" />
+          <button class="stock-soldout-btn${isSoldOut ? ' active' : ''}"
+                  onclick="toggleSoldOut(${p.row}, this)">缺貨</button>
+        </div>`;
+      grid.appendChild(div);
+    });
+  }
+
+  // ── 輸入框變更 ──
+  function onStockChange(row, val) {
+    var trimmed = val.toString().trim();
+    if (trimmed === '') {
+      stockChanges[row] = null; // 無限
+    } else {
+      var num = parseInt(trimmed);
+      stockChanges[row] = isNaN(num) ? null : Math.max(0, num);
+    }
+    updateItemStyle(row);
+    updateFloatSave();
+  }
+
+  // ── 缺貨按鈕 ──
+  function toggleSoldOut(row, btn) {
+    var currentLimit = stockChanges.hasOwnProperty(row)
+                       ? stockChanges[row]
+                       : stockData.find(p => p.row === row).stockLimit;
+    if (currentLimit === 0) {
+      // 取消缺貨 → 清空（無限）
+      stockChanges[row] = null;
+    } else {
+      // 設為缺貨 → 0
+      stockChanges[row] = 0;
+    }
+    updateItemStyle(row);
+    // 同步 input 值
+    var div = document.querySelector('.stock-item[data-row="' + row + '"]');
+    if (div) {
+      var input = div.querySelector('.stock-input');
+      if (input) input.value = stockChanges[row] === null ? '' : stockChanges[row];
+    }
+    updateFloatSave();
+  }
+
+  // ── 更新單個商品卡片樣式 ──
+  function updateItemStyle(row) {
+    var div = document.querySelector('.stock-item[data-row="' + row + '"]');
+    if (!div) return;
+    var val = stockChanges.hasOwnProperty(row) ? stockChanges[row] : null;
+    var origP = stockData.find(p => p.row === row);
+    var isModified = stockChanges.hasOwnProperty(row);
+    var isSoldOut = val === 0;
+    div.className = 'stock-item' + (isSoldOut ? ' soldout' : '') + (isModified ? ' modified' : '');
+    var btn = div.querySelector('.stock-soldout-btn');
+    if (btn) btn.className = 'stock-soldout-btn' + (isSoldOut ? ' active' : '');
+  }
+
+  // ── 更新浮動儲存按鈕 ──
+  function updateFloatSave() {
+    var count = Object.keys(stockChanges).length;
+    var floatEl = document.getElementById('floatSave');
+    var badge = document.getElementById('floatBadge');
+    if (count > 0) {
+      floatEl.classList.add('visible');
+      badge.innerText = '已修改 ' + count + ' 項';
+    } else {
+      floatEl.classList.remove('visible');
+    }
+  }
+
+  // ── 批量儲存 ──
+  function saveStockChanges() {
+    var count = Object.keys(stockChanges).length;
+    if (count === 0) return;
+    if (!currentStockSheet) return alert('請先載入商品分頁');
+    if (!confirm('確定要儲存 ' + count + ' 項庫存變更到「' + currentStockSheet + '」分頁嗎？')) return;
+
+    var saveBtn = document.querySelector('.float-save-btn');
+    saveBtn.innerText = '儲存中...';
+    saveBtn.disabled = true;
+
+    var updates = Object.keys(stockChanges).map(function(row) {
+      return { row: parseInt(row), stockLimit: stockChanges[row] };
+    });
+
+    fetch(GAS_API_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'batchUpdateStockLimit',
+        sheetName: currentStockSheet,
+        updates: updates
+      })
+    }).then(function() {
+      // 更新 stockData 的原始值
+      updates.forEach(function(u) {
+        var p = stockData.find(function(p) { return p.row === u.row; });
+        if (p) p.stockLimit = u.stockLimit;
+      });
+      stockChanges = {};
+      renderStockGrid();
+      updateFloatSave();
+      saveBtn.innerHTML = '<span>💾</span><span>確認儲存庫存</span>';
+      saveBtn.disabled = false;
+      alert('✅ 已成功儲存 ' + count + ' 項庫存設定！');
+    }).catch(function(err) {
+      alert('❌ 儲存失敗，請重試。');
+      saveBtn.innerHTML = '<span>💾</span><span>確認儲存庫存</span>';
+      saveBtn.disabled = false;
+      console.error(err);
+    });
+  }
 
   function switchTab(region) {
     currentTab = region;
