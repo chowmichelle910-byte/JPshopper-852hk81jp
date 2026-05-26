@@ -3,256 +3,45 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>852hk.81jp — 現場快閃代購</title>
-  <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600&family=Noto+Sans+HK:wght@300;400;500&display=swap" rel="stylesheet">
+  <title>現場快閃代購 — 852hk.81jp</title>
+  <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600&family=Noto+Sans+HK:wght@300;400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg: #f7f6f3;
-      --card: #ffffff;
-      --ink: #1a1a1a;
-      --muted: #888888;
-      --border: #e8e6e1;
-      --accent: #1a1a1a;
-      --hk: #c0392b;
-      --tw: #2980b9;
-      --tag-open: #e8f5e9;
-      --tag-open-text: #2e7d32;
-      --tag-closed: #fce4ec;
-      --tag-closed-text: #c62828;
-    }
-
-    body {
-      font-family: 'Noto Sans HK', sans-serif;
-      background: var(--bg);
-      color: var(--ink);
-      min-height: 100vh;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    /* ── Top bar ── */
-    .topbar {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      background: rgba(247,246,243,0.92);
-      backdrop-filter: blur(12px);
-      border-bottom: 1px solid var(--border);
-      height: 56px;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 20px;
-    }
-
-    .brand {
-      font-family: 'Shippori Mincho', serif;
-      font-size: 17px; font-weight: 600; letter-spacing: 3px;
-      color: var(--ink); text-decoration: none;
-    }
-
-    .hamburger {
-      width: 40px; height: 40px;
-      border: none; background: none; cursor: pointer;
-      display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 5px;
-      border-radius: 8px;
-      transition: background 0.2s;
-    }
-    .hamburger:hover { background: var(--border); }
-    .hamburger span {
-      display: block; width: 22px; height: 1.5px;
-      background: var(--ink); border-radius: 2px;
-      transition: all 0.3s ease;
-      transform-origin: center;
-    }
-    .hamburger.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
-    .hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
-    .hamburger.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
-
-    /* ── Drawer ── */
-    .drawer-overlay {
-      position: fixed; inset: 0; z-index: 90;
-      background: rgba(0,0,0,0.3);
-      opacity: 0; pointer-events: none;
-      transition: opacity 0.3s;
-    }
-    .drawer-overlay.open { opacity: 1; pointer-events: all; }
-
-    .drawer {
-      position: fixed; top: 0; right: 0; bottom: 0; z-index: 95;
-      width: 300px; background: var(--card);
-      transform: translateX(100%);
-      transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
-      display: flex; flex-direction: column;
-      border-left: 1px solid var(--border);
-    }
-    .drawer.open { transform: translateX(0); }
-
-    .drawer-header {
-      padding: 24px 20px 16px;
-      border-bottom: 1px solid var(--border);
-    }
-    .drawer-title {
-      font-size: 11px; letter-spacing: 3px; color: var(--muted);
-      text-transform: uppercase; margin-bottom: 16px;
-    }
-
-    /* Region toggle inside drawer */
-    .region-toggle {
-      display: flex; background: var(--bg);
-      border-radius: 8px; padding: 3px; gap: 2px;
-    }
-    .region-btn {
-      flex: 1; padding: 7px 0; font-size: 12px; font-weight: 500;
-      border: none; background: none; cursor: pointer;
-      border-radius: 6px; color: var(--muted);
-      transition: all 0.2s; letter-spacing: 1px;
-    }
-    .region-btn.active {
-      background: var(--card);
-      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-      color: var(--ink);
-    }
-    .region-btn.hk.active { color: var(--hk); }
-    .region-btn.tw.active { color: var(--tw); }
-
-    .drawer-body { flex: 1; overflow-y: auto; padding: 12px 0; }
-
-    .drawer-section-label {
-      font-size: 10px; letter-spacing: 2px; color: var(--muted);
-      text-transform: uppercase; padding: 8px 20px 4px;
-    }
-
-    .drawer-event-item {
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 20px;
-      text-decoration: none; color: var(--ink);
-      border-bottom: 1px solid var(--border);
-      transition: background 0.15s;
-      cursor: pointer;
-    }
-    .drawer-event-item:hover { background: var(--bg); }
-    .drawer-event-item:last-child { border-bottom: none; }
-
-    .dei-name { font-size: 13px; font-weight: 500; }
-    .dei-status {
-      font-size: 10px; font-weight: 600; padding: 2px 8px;
-      border-radius: 20px; letter-spacing: 0.5px;
-    }
-    .dei-status.open { background: var(--tag-open); color: var(--tag-open-text); }
-    .dei-status.closed { background: var(--tag-closed); color: var(--tag-closed-text); }
-
-    /* ── Main content ── */
-    .main {
-      max-width: 480px; margin: 0 auto;
-      padding: 88px 20px 60px;
-    }
-
-    .hero { text-align: center; margin-bottom: 48px; }
-    .hero-brand {
-      font-family: 'Shippori Mincho', serif;
-      font-size: 28px; font-weight: 600; letter-spacing: 6px;
-      color: var(--ink); margin-bottom: 10px;
-    }
-    .hero-divider {
-      width: 36px; height: 1px; background: var(--muted);
-      margin: 12px auto;
-    }
-    .hero-sub {
-      font-size: 11px; color: var(--muted); letter-spacing: 2px;
-      text-transform: uppercase;
-    }
-
-    /* Region pill on main */
-    .region-pill-wrap {
-      display: flex; justify-content: center; margin-bottom: 32px;
-    }
-    .region-pill {
-      display: flex; background: var(--card);
-      border: 1px solid var(--border); border-radius: 40px; padding: 4px;
-    }
-    .rpill-btn {
-      padding: 7px 22px; font-size: 12px; font-weight: 500;
-      border: none; background: none; cursor: pointer;
-      border-radius: 36px; color: var(--muted);
-      transition: all 0.2s; letter-spacing: 0.5px;
-    }
-    .rpill-btn.active {
-      color: var(--card);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    }
-    .rpill-btn.hk.active { background: var(--hk); }
-    .rpill-btn.tw.active { background: var(--tw); }
-
-    /* Event cards */
-    .event-list { display: flex; flex-direction: column; gap: 12px; }
-
-    .event-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px; padding: 18px 20px;
-      text-decoration: none; color: var(--ink);
-      display: flex; align-items: center; justify-content: space-between;
-      transition: all 0.25s ease;
-      position: relative; overflow: hidden;
-    }
-    .event-card::before {
-      content: ''; position: absolute; left: 0; top: 0; bottom: 0;
-      width: 3px;
-      transition: background 0.2s;
-    }
-    .event-card.hk::before { background: var(--hk); }
-    .event-card.tw::before { background: var(--tw); }
-    .event-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.07);
-    }
-    .event-card.expired { opacity: 0.55; pointer-events: none; }
-
-    .ec-left { flex: 1; padding-left: 10px; }
-    .ec-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
-    .ec-region {
-      font-size: 10px; letter-spacing: 1px;
-      color: var(--muted); text-transform: uppercase;
-    }
-    .ec-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-    .ec-badge {
-      font-size: 10px; font-weight: 600; padding: 3px 10px;
-      border-radius: 20px;
-    }
-    .ec-badge.open { background: var(--tag-open); color: var(--tag-open-text); }
-    .ec-badge.closed { background: var(--tag-closed); color: var(--tag-closed-text); }
-    .ec-arrow { font-size: 16px; color: #cccccc; }
-
-    .loading-wrap {
-      text-align: center; padding: 60px 0;
-      color: var(--muted); font-size: 13px;
-    }
-    .spinner {
-      border: 2px solid rgba(0,0,0,0.08);
-      width: 22px; height: 22px; border-radius: 50%;
-      border-left-color: var(--ink);
-      animation: spin 0.8s linear infinite;
-      margin: 0 auto 12px;
-    }
+    body { font-family: 'Noto Sans HK', sans-serif; background: #f7f6f3; color: #1a1a1a; -webkit-font-smoothing: antialiased; }
+    .jp-card { background: #fff; border: 1px solid #e8e6e1; border-radius: 10px; transition: all 0.2s; }
+    .jp-input { border: 1px solid #dcdfdc; background: #fafbfa; border-radius: 6px; transition: all 0.2s; }
+    .jp-input:focus { border-color: #8fa499; background: #fff; outline: none; box-shadow: 0 0 0 3px rgba(143,164,153,0.15); }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: #d0d0d0; border-radius: 2px; }
+    .spinner { border: 2px solid rgba(0,0,0,0.1); width: 22px; height: 22px; border-radius: 50%; border-left-color: #4a574d; animation: spin 0.9s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-
-    .empty-msg {
-      text-align: center; padding: 40px 20px;
-      color: var(--muted); font-size: 13px; line-height: 1.8;
-    }
-
-    /* Deadline countdown */
-    .ec-countdown {
-      font-size: 10px; color: #e67e22; letter-spacing: 0.3px;
-    }
+    .brand-serif { font-family: 'Shippori Mincho', serif; }
+    .closed-overlay { position: absolute; inset: 0; background: rgba(255,255,255,0.7); border-radius: 10px; display: flex; align-items: center; justify-content: center; z-index: 10; }
+    .deadline-banner { background: #fce4ec; border: 1px solid #ef9a9a; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #c62828; text-align: center; margin-bottom: 16px; }
+    .topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 100; background: rgba(247,246,243,0.92); backdrop-filter: blur(12px); border-bottom: 1px solid #e8e6e1; height: 52px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; }
+    .hamburger { width: 38px; height: 38px; border: none; background: none; cursor: pointer; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 5px; border-radius: 8px; }
+    .hamburger span { display: block; width: 20px; height: 1.5px; background: #1a1a1a; border-radius: 2px; transition: all 0.3s; transform-origin: center; }
+    .hamburger.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+    .hamburger.open span:nth-child(2) { opacity: 0; }
+    .hamburger.open span:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
+    .drawer-overlay { position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,0.3); opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+    .drawer-overlay.open { opacity: 1; pointer-events: all; }
+    .drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: 95; width: 280px; background: #fff; transform: translateX(100%); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1); border-left: 1px solid #e8e6e1; display: flex; flex-direction: column; }
+    .drawer.open { transform: translateX(0); }
+    .drawer-item { display: flex; align-items: center; justify-content: space-between; padding: 13px 20px; border-bottom: 1px solid #f0efec; text-decoration: none; color: #1a1a1a; font-size: 13px; font-weight: 500; transition: background 0.15s; }
+    .drawer-item:hover { background: #f7f6f3; }
+    .drawer-item.active { color: #c0392b; }
+    .region-switch { display: flex; gap: 0; background: #f0efec; border-radius: 6px; padding: 3px; }
+    .rs-btn { flex: 1; padding: 6px 0; font-size: 11px; border: none; background: none; cursor: pointer; border-radius: 4px; color: #888; font-weight: 500; letter-spacing: 0.5px; transition: all 0.2s; }
+    .rs-btn.active { background: #fff; color: #1a1a1a; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
   </style>
 </head>
-<body>
+<body class="min-h-screen pb-64" x-data="shopApp()" x-init="init()">
 
-<!-- Top bar -->
+<!-- Topbar -->
 <div class="topbar">
-  <a href="/" class="brand">852hk.81jp</a>
-  <button class="hamburger" id="hamburgerBtn" aria-label="選單">
-    <span></span><span></span><span></span>
-  </button>
+  <a href="/" style="font-family:'Shippori Mincho',serif; font-size:16px; font-weight:600; letter-spacing:3px; color:#1a1a1a; text-decoration:none;">852hk.81jp</a>
+  <button class="hamburger" id="hamBtn"><span></span><span></span><span></span></button>
 </div>
 
 <!-- Drawer overlay -->
@@ -260,200 +49,377 @@
 
 <!-- Drawer -->
 <div class="drawer" id="drawer">
-  <div class="drawer-header">
-    <div class="drawer-title">選擇地區</div>
-    <div class="region-toggle">
-      <button class="region-btn hk active" data-region="hk">🇭🇰 香港</button>
-      <button class="region-btn tw" data-region="tw">🇹🇼 台灣</button>
+  <div style="padding:20px 20px 12px; border-bottom:1px solid #e8e6e1;">
+    <div style="font-size:10px; letter-spacing:3px; color:#888; text-transform:uppercase; margin-bottom:12px;">切換地區</div>
+    <div class="region-switch">
+      <button class="rs-btn active" onclick="window.location.href='/'">🇭🇰 HK</button>
+      <button class="rs-btn" onclick="switchToTW()">🇹🇼 TW</button>
     </div>
   </div>
-  <div class="drawer-body">
-    <div class="drawer-section-label">進行中活動</div>
-    <div id="drawerEventList">
-      <div style="padding:20px; color:#aaa; font-size:13px;">載入中...</div>
-    </div>
-  </div>
+  <div style="padding:12px 20px 4px; font-size:10px; letter-spacing:2px; color:#aaa; text-transform:uppercase;">選擇活動</div>
+  <div id="drawerEvents" style="flex:1; overflow-y:auto;"></div>
 </div>
 
-<!-- Main -->
-<main class="main">
-  <div class="hero">
-    <div class="hero-brand">852hk.81jp</div>
-    <div class="hero-divider"></div>
-    <div class="hero-sub">現場快閃代購</div>
-  </div>
+<div class="max-w-md mx-auto px-4" style="padding-top: 68px;">
 
-  <div class="region-pill-wrap">
-    <div class="region-pill">
-      <button class="rpill-btn hk active" data-region="hk">🇭🇰 香港版 HKD</button>
-      <button class="rpill-btn tw" data-region="tw">🇹🇼 台灣版 TWD</button>
+  <!-- Event title -->
+  <header class="text-center my-6">
+    <div style="font-size:10px; letter-spacing:3px; color:#c0392b; text-transform:uppercase; margin-bottom:6px;">香港版 · HKD</div>
+    <h1 class="brand-serif text-xl font-semibold tracking-widest" x-text="displayEventName || '載入中...'"></h1>
+    <div style="width:36px; height:1px; background:#bbb; margin:12px auto 0;"></div>
+  </header>
+
+  <!-- Deadline banner -->
+  <template x-if="isClosed">
+    <div class="deadline-banner">⚠️ 此活動已截止收單，感謝您的支持！</div>
+  </template>
+
+  <!-- Loading -->
+  <template x-if="loading">
+    <div class="flex flex-col items-center justify-center py-20">
+      <div class="spinner mb-4"></div>
+      <p class="text-sm" style="color:#888;">正在載入商品...</p>
+    </div>
+  </template>
+
+  <template x-if="!loading">
+    <div>
+      <!-- Products grid -->
+      <div class="grid grid-cols-2 gap-3 mb-8">
+        <template x-for="product in products" :key="product.id">
+          <div class="jp-card p-2.5 flex flex-col relative"
+               :class="isProductSelected(product.id) ? 'border-neutral-700 ring-1 ring-neutral-700' : ''">
+
+            <!-- Closed overlay -->
+            <template x-if="isClosed">
+              <div class="closed-overlay"><span style="font-size:11px;color:#c62828;font-weight:600;">已截止</span></div>
+            </template>
+
+            <div class="w-full aspect-square bg-neutral-50 rounded mb-2 overflow-hidden">
+              <img :src="product.photo" class="w-full h-full object-cover" alt="">
+            </div>
+            <div class="flex-1 flex flex-col justify-between">
+              <div>
+                <h3 class="text-xs font-medium line-clamp-2 leading-tight" x-text="product.name"></h3>
+                <p class="text-xs font-bold mt-1">HK$ <span x-text="product.price"></span></p>
+                <p class="text-[10px] mt-0.5" style="color:#aaa;" x-text="product.yen ? '¥' + product.yen : ''"></p>
+              </div>
+              <div class="mt-2 pt-2 border-t border-dashed border-neutral-100">
+                <p class="text-[10px] mb-1" style="color:#aaa;">款式選擇（可複選）</p>
+                <div class="space-y-1 max-h-24 overflow-y-auto">
+                  <template x-for="sub in product.subs" :key="sub">
+                    <div class="flex items-center justify-between bg-neutral-50 p-1 rounded text-[11px]">
+                      <label class="flex items-center space-x-1 flex-1 cursor-pointer truncate"
+                             :class="isClosed ? 'opacity-50 pointer-events-none' : ''">
+                        <input type="checkbox"
+                               :checked="isSubChecked(product.id, sub)"
+                               @change="!isClosed && toggleSub(product, sub)"
+                               :disabled="isClosed"
+                               class="w-3 h-3">
+                        <span class="truncate" style="color:#555;" x-text="sub"></span>
+                      </label>
+                      <template x-if="isSubChecked(product.id, sub)">
+                        <div class="flex items-center space-x-1 ml-1 bg-white border border-neutral-200 rounded">
+                          <button @click="changeQty(product.id, sub, -1)" class="px-1 text-neutral-500 font-bold">-</button>
+                          <span class="text-[10px] w-3 text-center" x-text="getQty(product.id, sub)"></span>
+                          <button @click="changeQty(product.id, sub, 1)" class="px-1 text-neutral-500 font-bold">+</button>
+                        </div>
+                      </template>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+      </div>
+
+      <!-- Recipient form -->
+      <div id="recipient-section" class="jp-card p-4 space-y-4 mb-6 scroll-mt-4">
+        <h2 class="text-sm font-medium border-l-2 pl-2" style="border-color:#1a1a1a;">收件人資料</h2>
+        <div>
+          <label class="block text-xs mb-1" style="color:#888;">收件人姓名 *</label>
+          <input type="text" x-model="form.name" placeholder="請輸入姓名" class="w-full jp-input px-3 py-2 text-sm" :disabled="isClosed">
+        </div>
+        <div>
+          <label class="block text-xs mb-1" style="color:#888;">聯絡電話 *</label>
+          <input type="tel" inputmode="numeric" x-model="form.phone"
+                 @input="form.phone = form.phone.replace(/\D/g,'').substring(0,8)"
+                 placeholder="請輸入8位香港手機號碼" class="w-full jp-input px-3 py-2 text-sm" :disabled="isClosed">
+        </div>
+        <div>
+          <label class="block text-xs mb-1" style="color:#888;">電子郵件 *</label>
+          <input type="email" x-model="form.email" placeholder="請輸入電郵地址" class="w-full jp-input px-3 py-2 text-sm" :disabled="isClosed">
+        </div>
+      </div>
+
+      <!-- 易寄取 -->
+      <div class="jp-card p-4 space-y-4 mb-6">
+        <h2 class="text-sm font-medium border-l-2 pl-2" style="border-color:#1a1a1a;">易寄取收件地址</h2>
+        <div>
+          <label class="block text-xs mb-1" style="color:#888;">搜尋門市（可輸入編號或名稱）</label>
+          <input type="text" x-model="addressSearch" placeholder="例如：7-Eleven / 旺角 / HK001" class="w-full jp-input px-3 py-2 text-sm">
+        </div>
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block text-[10px] mb-1" style="color:#aaa;">類別</label>
+            <select x-model="filter.type" @change="resetAddressCascade('type')" class="w-full jp-input p-1.5 text-xs bg-white">
+              <option value="">全部</option>
+              <option>郵政局</option><option>智郵站</option><option>7-Eleven</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] mb-1" style="color:#aaa;">地區</label>
+            <select x-model="filter.region" @change="resetAddressCascade('region')" class="w-full jp-input p-1.5 text-xs bg-white">
+              <option value="">全部</option>
+              <template x-for="r in availableRegions" :key="r"><option :value="r" x-text="r"></option></template>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] mb-1" style="color:#aaa;">分區</label>
+            <select x-model="filter.district" @change="resetAddressCascade('district')" class="w-full jp-input p-1.5 text-xs bg-white">
+              <option value="">全部</option>
+              <template x-for="d in availableDistricts" :key="d"><option :value="d" x-text="d"></option></template>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs mb-1" style="color:#888;">選擇自提點 *</label>
+          <select x-model="selectedAddressIndex" class="w-full jp-input p-2 text-xs bg-white">
+            <option value="">— 請選擇收件地址 —</option>
+            <template x-for="(addr, idx) in filteredAddresses" :key="idx">
+              <option :value="addr.originalIndex" x-text="`[${addr.code}] ${addr.name} - ${addr.address}`"></option>
+            </template>
+          </select>
+        </div>
+        <div style="background:#f7f6f3; border:1px solid #e8e6e1;" class="p-3 rounded text-xs space-y-1">
+          <p class="font-medium" style="color:#1a1a1a;">已選收件地址：</p>
+          <p style="color:#666;">地區：<strong x-text="displayAddress.region || '（未選擇）'"></strong></p>
+          <p style="color:#666;">分區：<strong x-text="displayAddress.district || '（未選擇）'"></strong></p>
+          <p style="color:#666;">地址：<strong x-text="displayAddress.address || '（未選擇）'"></strong></p>
+        </div>
+      </div>
+
+      <!-- Payment -->
+      <div class="jp-card p-4 space-y-3 mb-6">
+        <h2 class="text-sm font-medium border-l-2 pl-2" style="border-color:#1a1a1a;">付款方式</h2>
+        <div class="flex space-x-6 px-2">
+          <label class="flex items-center space-x-2 text-sm cursor-pointer">
+            <input type="radio" name="payment" value="PayMe" x-model="form.paymentMethod"> <span>PayMe</span>
+          </label>
+          <label class="flex items-center space-x-2 text-sm cursor-pointer">
+            <input type="radio" name="payment" value="FPS" x-model="form.paymentMethod"> <span>轉數快 (FPS)</span>
+          </label>
+        </div>
+      </div>
+
+    </div>
+  </template>
+</div>
+
+<!-- Footer cart -->
+<footer class="fixed bottom-0 left-0 right-0 bg-white border-t shadow-xl z-50" style="border-color:#e8e6e1;">
+  <div class="max-w-md mx-auto relative h-0">
+    <div class="absolute -top-14 right-4 z-50">
+      <button @click="scrollToRecipient()"
+              class="p-3 rounded-full shadow-lg flex items-center justify-center text-white relative"
+              style="background:#1a1a1a;">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 0a2 2 0 11-4 0 2 2 0 014 0z"/>
+        </svg>
+        <template x-if="cartItems.length > 0">
+          <span class="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center animate-pulse"
+                x-text="cartItems.reduce((s,i)=>s+i.qty,0)"></span>
+        </template>
+      </button>
     </div>
   </div>
-
-  <div id="loadingWrap" class="loading-wrap">
-    <div class="spinner"></div>
-    <div>正在獲取最新快閃活動...</div>
+  <div class="max-w-md mx-auto p-4">
+    <div class="mb-3 text-xs max-h-20 overflow-y-auto border rounded bg-neutral-50 p-2" style="border-color:#e8e6e1;">
+      <p class="font-medium mb-1" style="color:#555;">已選商品明細：</p>
+      <template x-for="item in cartItems" :key="item.id+'-'+item.sub">
+        <div class="flex justify-between py-0.5 border-b border-dashed last:border-0" style="color:#888; border-color:#e0e0e0;">
+          <span class="truncate max-w-[240px]" x-text="`${item.name} (${item.sub}) x${item.qty}`"></span>
+          <span class="font-medium" style="color:#333;" x-text="`HK$${item.price*item.qty}`"></span>
+        </div>
+      </template>
+      <template x-if="cartItems.length===0">
+        <p style="color:#bbb;" class="italic">請勾選想購買的商品款式</p>
+      </template>
+    </div>
+    <div class="flex items-center justify-between">
+      <div>
+        <p class="text-[10px]" style="color:#aaa;">小計 HK$<span x-text="subtotal"></span> ｜ 郵費 <span x-text="shippingFee===0?'包郵':'HK$'+shippingFee"></span></p>
+        <p class="text-lg font-bold">總金額 HK$<span x-text="totalAmount"></span></p>
+      </div>
+      <button @click="submitOrder()"
+              :disabled="submitting || cartItems.length===0 || isClosed"
+              class="text-white text-sm font-medium py-2.5 px-5 rounded-md tracking-widest transition disabled:cursor-not-allowed flex items-center space-x-2"
+              :style="isClosed ? 'background:#ccc;' : 'background:#1a1a1a;'">
+        <template x-if="submitting"><div class="spinner !w-4 !h-4 mr-2"></div></template>
+        <span x-text="isClosed ? '已截止收單' : (submitting ? '提交中...' : '確認提交訂單')"></span>
+      </button>
+    </div>
   </div>
-  <div id="eventList" class="event-list" style="display:none;"></div>
-</main>
+</footer>
 
 <script>
 const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzgsFv9_AjExH0VCh1m6DX18qTmXMKwO0xiBGQfYqvO2Q6nb5ZNeXRbsdRsbGVcFidIQw/exec";
-const EXCLUDED = ["Blank", "易寄取地址", "訂單紀錄", "Sheet1", "工作表1", "收單截止時間"];
+const EXCLUDED = ["Blank","易寄取地址","訂單紀錄","收單截止時間"];
 
-let currentRegion = localStorage.getItem('region') || 'hk';
-let allSheets = [];
-let deadlines = {};
-
-// ── Drawer toggle ──
-const hamburgerBtn = document.getElementById('hamburgerBtn');
+// Drawer
+const hamBtn = document.getElementById('hamBtn');
 const drawer = document.getElementById('drawer');
 const drawerOverlay = document.getElementById('drawerOverlay');
+hamBtn.addEventListener('click', () => { drawer.classList.toggle('open'); drawerOverlay.classList.toggle('open'); hamBtn.classList.toggle('open'); });
+drawerOverlay.addEventListener('click', () => { drawer.classList.remove('open'); drawerOverlay.classList.remove('open'); hamBtn.classList.remove('open'); });
 
-function openDrawer() {
-  drawer.classList.add('open');
-  drawerOverlay.classList.add('open');
-  hamburgerBtn.classList.add('open');
-}
-function closeDrawer() {
-  drawer.classList.remove('open');
-  drawerOverlay.classList.remove('open');
-  hamburgerBtn.classList.remove('open');
-}
-hamburgerBtn.addEventListener('click', () => drawer.classList.contains('open') ? closeDrawer() : openDrawer());
-drawerOverlay.addEventListener('click', closeDrawer);
-
-// ── Region toggle ──
-function setRegion(region) {
-  currentRegion = region;
-  localStorage.setItem('region', region);
-
-  document.querySelectorAll('[data-region]').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.region === region);
-  });
-
-  renderCards();
-  renderDrawer();
+function switchToTW() {
+  const path = window.location.pathname.replace('/zh-hk/', '/zh-tw/');
+  window.location.href = path;
 }
 
-document.querySelectorAll('[data-region]').forEach(btn => {
-  btn.addEventListener('click', () => setRegion(btn.dataset.region));
-});
-
-// ── Deadline helpers ──
-function isExpired(eventName) {
-  if (!deadlines[eventName]) return false;
-  const dl = new Date(deadlines[eventName].replace(/\//g, '-'));
-  return isNaN(dl) ? false : new Date() > dl;
-}
-
-function countdownText(eventName) {
-  if (!deadlines[eventName]) return '';
-  const dl = new Date(deadlines[eventName].replace(/\//g, '-'));
-  if (isNaN(dl)) return '';
-  const diff = dl - new Date();
-  if (diff <= 0) return '已截止';
-  const h = Math.floor(diff / 3600000);
-  const m = Math.floor((diff % 3600000) / 60000);
-  if (h < 24) return `截單倒數 ${h}h ${m}m`;
-  const d = Math.floor(h / 24);
-  return `截單倒數 ${d} 天`;
-}
-
-function buildUrl(sheetName) {
-  const slug = sheetName.replace(/\s+/g, '-');
-  const prefix = currentRegion === 'tw' ? '/zh-tw/' : '/zh-hk/';
-  return prefix + slug + '.html';
-}
-
-// ── Render main cards ──
-function renderCards() {
-  const list = document.getElementById('eventList');
-  list.innerHTML = '';
-  const filtered = allSheets.filter(n => EXCLUDED.indexOf(n) === -1);
-
-  if (filtered.length === 0) {
-    list.innerHTML = '<div class="empty-msg">📭 暫時沒有進行中的快閃代購活動</div>';
-    return;
-  }
-
-  filtered.forEach(name => {
-    const expired = isExpired(name);
-    const cd = countdownText(name);
-    const regionLabel = currentRegion === 'tw' ? '台灣版 TWD' : '香港版 HKD';
-
-    const a = document.createElement('a');
-    a.className = `event-card ${currentRegion}${expired ? ' expired' : ''}`;
-    a.href = buildUrl(name);
-    a.innerHTML = `
-      <div class="ec-left">
-        <div class="ec-name">${name}</div>
-        <div class="ec-region">${regionLabel}</div>
-        ${cd ? `<div class="ec-countdown">${cd}</div>` : ''}
-      </div>
-      <div class="ec-right">
-        <span class="ec-badge ${expired ? 'closed' : 'open'}">${expired ? '已截止' : '進行中'}</span>
-        <span class="ec-arrow">→</span>
-      </div>`;
-    list.appendChild(a);
-  });
-}
-
-// ── Render drawer event list ──
-function renderDrawer() {
-  const container = document.getElementById('drawerEventList');
-  container.innerHTML = '';
-  const filtered = allSheets.filter(n => EXCLUDED.indexOf(n) === -1);
-
-  if (filtered.length === 0) {
-    container.innerHTML = '<div style="padding:16px 20px; color:#aaa; font-size:13px;">目前沒有活動</div>';
-    return;
-  }
-
-  filtered.forEach(name => {
-    const expired = isExpired(name);
-    const a = document.createElement('a');
-    a.className = 'drawer-event-item';
-    a.href = buildUrl(name);
-    a.addEventListener('click', closeDrawer);
-    a.innerHTML = `
-      <span class="dei-name">${name}</span>
-      <span class="dei-status ${expired ? 'closed' : 'open'}">${expired ? '已截止' : '進行中'}</span>`;
-    container.appendChild(a);
-  });
-}
-
-// ── Load data ──
-async function loadData() {
+// Load drawer events
+async function loadDrawerEvents() {
   try {
     const [sheetsRes, dlRes] = await Promise.all([
       fetch(GAS_API_URL + '?action=getSheets'),
       fetch(GAS_API_URL + '?action=getDeadlines')
     ]);
-    allSheets = await sheetsRes.json();
-    deadlines = await dlRes.json();
-  } catch (e) {
-    console.error(e);
-    allSheets = [];
-    deadlines = {};
-  }
-
-  document.getElementById('loadingWrap').style.display = 'none';
-  document.getElementById('eventList').style.display = 'flex';
-
-  // Init region buttons
-  document.querySelectorAll('[data-region]').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.region === currentRegion);
-  });
-
-  renderCards();
-  renderDrawer();
-
-  // Refresh countdown every minute
-  setInterval(renderCards, 60000);
+    const sheets = await sheetsRes.json();
+    const deadlines = await dlRes.json();
+    const container = document.getElementById('drawerEvents');
+    container.innerHTML = '';
+    sheets.filter(n => EXCLUDED.indexOf(n) === -1).forEach(name => {
+      const slug = name.replace(/\s+/g, '-');
+      const expired = deadlines[name] ? new Date() > new Date(deadlines[name].replace(/\//g,'-')) : false;
+      const a = document.createElement('a');
+      a.className = 'drawer-item' + (name === (new URLSearchParams(window.location.search).get('event') || '') ? ' active' : '');
+      a.href = '/zh-hk/' + slug + '.html';
+      a.innerHTML = `<span>${name}</span><span style="font-size:10px;padding:2px 8px;border-radius:20px;background:${expired?'#fce4ec':'#e8f5e9'};color:${expired?'#c62828':'#2e7d32'};font-weight:600;">${expired?'已截止':'進行中'}</span>`;
+      container.appendChild(a);
+    });
+  } catch(e) { console.error(e); }
 }
+loadDrawerEvents();
 
-loadData();
+function shopApp() {
+  return {
+    loading: true, submitting: false,
+    displayEventName: '', sheetEventName: '',
+    products: [], allAddresses: [],
+    addressSearch: '', selectedAddressIndex: '',
+    filter: { type:'', region:'', district:'' },
+    form: { name:'', phone:'', email:'', paymentMethod:'PayMe' },
+    cart: {},
+    deadline: '',
+
+    get isClosed() {
+      if (!this.deadline) return false;
+      const dl = new Date(this.deadline.replace(/\//g,'-'));
+      return !isNaN(dl) && new Date() > dl;
+    },
+
+    getEventNameFromURL() {
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        let ep = urlParams.get('event');
+        if (ep) return decodeURIComponent(ep).trim();
+        const path = window.location.pathname;
+        let fileName = path.substring(path.lastIndexOf('/') + 1);
+        if (!fileName || fileName === 'index.html') return '';
+        return decodeURIComponent(fileName).replace(/\.html$/i,'').replace(/-/g,' ').trim();
+      } catch(e) { return ''; }
+    },
+
+    async init() {
+      this.sheetEventName = this.getEventNameFromURL();
+      this.displayEventName = this.sheetEventName;
+      if (!this.sheetEventName) { this.loading = false; return; }
+      document.title = `代購 ${this.displayEventName} (HK) — 852hk.81jp`;
+      try {
+        const res = await fetch(`${GAS_API_URL}?action=getItems&event=${encodeURIComponent(this.sheetEventName)}&t=${Date.now()}`);
+        const data = await res.json();
+        this.products = data.products || [];
+        this.allAddresses = (data.addresses || []).map((item, i) => { item.originalIndex = i; return item; });
+        this.deadline = data.deadline || '';
+      } catch(e) { alert('讀取商品失敗，請重試。'); }
+      finally { this.loading = false; }
+    },
+
+    scrollToRecipient() { document.getElementById('recipient-section')?.scrollIntoView({behavior:'smooth'}); },
+    isProductSelected(id) { return Object.keys(this.cart).some(k => k.startsWith(id+'_')); },
+    isSubChecked(id, sub) { return !!this.cart[id+'_'+sub]; },
+    toggleSub(product, sub) {
+      const key = product.id+'_'+sub;
+      if (this.cart[key]) { delete this.cart[key]; } else { this.cart[key] = {id:product.id, name:product.name, sub, price:product.price, yen:product.yen||0, qty:1}; }
+      this.cart = {...this.cart};
+    },
+    getQty(id, sub) { return this.cart[id+'_'+sub]?.qty || 0; },
+    changeQty(id, sub, amt) {
+      const key = id+'_'+sub;
+      if (!this.cart[key]) return;
+      this.cart[key].qty = Math.max(1, this.cart[key].qty + amt);
+      this.cart = {...this.cart};
+    },
+    get cartItems() { return Object.values(this.cart); },
+    get subtotal() { return this.cartItems.reduce((s,i) => s + i.price*i.qty, 0); },
+    get shippingFee() { return this.cartItems.length===0 ? 0 : (this.subtotal >= 500 ? 0 : 10); },
+    get totalAmount() { return this.subtotal + this.shippingFee; },
+    get availableRegions() { let s=new Set(); this.allAddresses.forEach(a => { if (!this.filter.type||a.type===this.filter.type) s.add(a.region); }); return Array.from(s); },
+    get availableDistricts() { let s=new Set(); this.allAddresses.forEach(a => { if ((!this.filter.type||a.type===this.filter.type)&&(!this.filter.region||a.region===this.filter.region)) s.add(a.district); }); return Array.from(s); },
+    get filteredAddresses() {
+      let search = this.addressSearch.trim().toLowerCase();
+      return this.allAddresses.filter(a => {
+        if (this.filter.type && a.type !== this.filter.type) return false;
+        if (this.filter.region && a.region !== this.filter.region) return false;
+        if (this.filter.district && a.district !== this.filter.district) return false;
+        if (search && !a.code.toLowerCase().includes(search) && !a.name.toLowerCase().includes(search) && !a.address.toLowerCase().includes(search)) return false;
+        return true;
+      });
+    },
+    resetAddressCascade(level) {
+      if (level==='type') { this.filter.region=''; this.filter.district=''; }
+      if (level==='region') this.filter.district='';
+      if (this.selectedAddressIndex !== '' && !this.filteredAddresses.some(a => a.originalIndex === Number(this.selectedAddressIndex))) this.selectedAddressIndex='';
+    },
+    get displayAddress() { return this.selectedAddressIndex==='' ? {} : (this.allAddresses[this.selectedAddressIndex]||{}); },
+
+    async submitOrder() {
+      if (this.isClosed) { alert('此活動已截止收單。'); return; }
+      if (this.cartItems.length===0 || !this.form.name.trim() || !/^\d{8}$/.test(this.form.phone) || !this.form.email.trim() || this.selectedAddressIndex==='') {
+        alert('請確認所有必填欄位（姓名、電話、電郵、收件地址）及已勾選商品。'); return;
+      }
+      this.submitting = true;
+      let grouped = {};
+      let totalJPYAmount = 0;
+      this.cartItems.forEach(item => {
+        if (!grouped[item.name]) grouped[item.name] = [];
+        grouped[item.name].push(`${item.sub} x${item.qty}`);
+        totalJPYAmount += (parseFloat(item.yen)||0) * item.qty;
+      });
+      const itemsSummary = Object.keys(grouped).map(n => `${n} (${grouped[n].join(', ')})`).join(', ');
+      const payload = {
+        eventSheetName: this.sheetEventName, region: 'hk',
+        itemsSummary, totalAmount: this.totalAmount,
+        shippingFee: this.shippingFee, paymentMethod: this.form.paymentMethod,
+        totalJPYAmount, recipientName: this.form.name,
+        recipientPhone: this.form.phone, recipientEmail: this.form.email.trim(),
+        pickupType: this.displayAddress.type, pickupCode: this.displayAddress.code,
+        pickupName: this.displayAddress.name, pickupAddress: this.displayAddress.address,
+        cartItems: this.cartItems
+      };
+      try {
+        await fetch(GAS_API_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
+        alert(`🎉 訂單提交成功！\n\n應付總額：HK$${this.totalAmount}\n確認信已寄出，多謝！`);
+        this.cart={}; this.form.name=''; this.form.phone=''; this.form.email=''; this.selectedAddressIndex='';
+      } catch(e) { alert('提交失敗，請檢查網絡連線。'); }
+      finally { this.submitting=false; }
+    }
+  };
+}
 </script>
+<!-- Alpine.js 必須在 shopApp() 定義之後載入 -->
+<script src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </body>
 </html>
