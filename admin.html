@@ -97,12 +97,10 @@
     .stock-item-info { flex: 1; min-width: 0; }
     .stock-item-name { font-size: 12px; font-weight: 600; color: #222; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .stock-item-subs { font-size: 11px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
-    .stock-item-controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
-    .stock-input { width: 52px; padding: 5px 6px; border: 1px solid #ddd; border-radius: 5px; font-size: 13px; text-align: center; outline: none; }
-    .stock-input:focus { border-color: var(--primary); }
+    .stock-item-controls { display: flex; align-items: center; flex-shrink: 0; }
     .stock-soldout-btn {
-      padding: 4px 8px; font-size: 10px; font-weight: 700;
-      border: none; border-radius: 4px; cursor: pointer; transition: all 0.15s;
+      padding: 6px 12px; font-size: 11px; font-weight: 700;
+      border: none; border-radius: 6px; cursor: pointer; transition: all 0.15s;
       background: #fee2e2; color: #dc2626; white-space: nowrap;
     }
     .stock-soldout-btn.active { background: #dc2626; color: white; }
@@ -317,7 +315,6 @@
       div.className = 'stock-item' + (isSoldOut ? ' soldout' : '') + (isModified ? ' modified' : '');
       div.dataset.row = p.row;
 
-      var inputVal = currentLimit === null ? '' : currentLimit;
       var fallbackImg = 'https://res.cloudinary.com/disr3dmsj/image/upload/v1776507968/uploads/2025-08/km1wihlxni7v7docvkb0.webp';
       var imgSrc = (p.photo && p.photo.indexOf('http') === 0) ? p.photo : fallbackImg;
 
@@ -326,32 +323,13 @@
         <div class="stock-item-info">
           <div class="stock-item-name" title="${p.name}">${p.name}</div>
           <div class="stock-item-subs">${p.subs || '—'}</div>
-          <div style="font-size:10px; color:#bbb; margin-top:1px;">HK$${p.price} ${p.twd ? '/ NT$'+p.twd : ''}</div>
         </div>
         <div class="stock-item-controls">
-          <input type="number" class="stock-input" min="0"
-                 value="${inputVal}"
-                 placeholder="∞"
-                 onchange="onStockChange(${p.row}, this.value)"
-                 oninput="onStockChange(${p.row}, this.value)" />
           <button class="stock-soldout-btn${isSoldOut ? ' active' : ''}"
                   onclick="toggleSoldOut(${p.row}, this)">缺貨</button>
         </div>`;
       grid.appendChild(div);
     });
-  }
-
-  // ── 輸入框變更 ──
-  function onStockChange(row, val) {
-    var trimmed = val.toString().trim();
-    if (trimmed === '') {
-      stockChanges[row] = null; // 無限
-    } else {
-      var num = parseInt(trimmed);
-      stockChanges[row] = isNaN(num) ? null : Math.max(0, num);
-    }
-    updateItemStyle(row);
-    updateFloatSave();
   }
 
   // ── 缺貨按鈕 ──
@@ -367,12 +345,6 @@
       stockChanges[row] = 0;
     }
     updateItemStyle(row);
-    // 同步 input 值
-    var div = document.querySelector('.stock-item[data-row="' + row + '"]');
-    if (div) {
-      var input = div.querySelector('.stock-input');
-      if (input) input.value = stockChanges[row] === null ? '' : stockChanges[row];
-    }
     updateFloatSave();
   }
 
