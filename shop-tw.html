@@ -114,17 +114,24 @@
                 <p class="text-[10px] mb-1" style="color:#aaa;">款式選擇（可複選）</p>
                 <div class="space-y-1 max-h-24 overflow-y-auto">
                   <template x-for="sub in product.subs" :key="sub">
-                    <div class="flex items-center justify-between bg-neutral-50 p-1 rounded text-[11px]">
+                    <div class="flex items-center justify-between bg-neutral-50 p-1 rounded text-[11px]"
+                         :style="isSoldOut(product, sub) ? 'background:#fff0f0;' : ''">
                       <label class="flex items-center space-x-1 flex-1 cursor-pointer truncate"
-                             :class="isClosed ? 'opacity-50 pointer-events-none' : ''">
+                             :class="(isClosed || isSoldOut(product, sub)) ? 'opacity-50 pointer-events-none' : ''">
                         <input type="checkbox"
                                :checked="isSubChecked(product.id, sub)"
-                               @change="!isClosed && toggleSub(product, sub)"
-                               :disabled="isClosed"
+                               @change="!isClosed && !isSoldOut(product, sub) && toggleSub(product, sub)"
+                               :disabled="isClosed || isSoldOut(product, sub)"
                                class="w-3 h-3">
                         <span class="truncate" style="color:#555;" x-text="sub"></span>
                       </label>
-                      <template x-if="isSubChecked(product.id, sub)">
+                      <template x-if="isSoldOut(product, sub)">
+                        <span style="font-size:9px; color:#c62828; font-weight:700; background:#fce4ec; padding:1px 5px; border-radius:3px; white-space:nowrap;">SOLD OUT</span>
+                      </template>
+                      <template x-if="!isSoldOut(product, sub) && remaining(product, sub) !== null && remaining(product, sub) <= 3 && remaining(product, sub) > 0">
+                        <span style="font-size:9px; color:#e67e22; font-weight:600; white-space:nowrap;" x-text="'僅剩'+remaining(product, sub)+'件'"></span>
+                      </template>
+                      <template x-if="isSubChecked(product.id, sub) && !isSoldOut(product, sub)">
                         <div class="flex items-center space-x-1 ml-1 bg-white border border-neutral-200 rounded">
                           <button @click="changeQty(product.id, sub, -1)" class="px-1 text-neutral-500 font-bold">-</button>
                           <span class="text-[10px] w-3 text-center" x-text="getQty(product.id, sub)"></span>
@@ -169,7 +176,6 @@
             <div class="tw-notice-step"><span class="step-num">2</span><span>從日本寄出後，店主將以 <strong>Email 通知您</strong>，並於賣貨便平台建立出貨單</span></div>
             <div class="tw-notice-step"><span class="step-num">3</span><span>收到 Email 後，請於賣貨便選擇您方便的超商門市，並完成 <strong>國際運費 + NT$38 賣貨便運費</strong> 的付款</span></div>
             <div class="tw-notice-step"><span class="step-num">4</span><span>到貨後前往指定超商取貨，<strong>取貨付款</strong>即完成交易</span></div>
-            <div class="tw-notice-step"><span class="step-num">5</span><span>如遇缺貨, 則<strong>缺貨商品</strong>全額退款</span></div>
           </div>
           <div style="margin-top:12px; padding:10px 12px; background:rgba(41,128,185,0.08); border-radius:6px; font-size:11px; color:#555; line-height:1.8;">
             💡 <strong>運費說明：</strong>國際運費依商品重量計算，<strong>NT$20 / 50g</strong>，不足 50g 以 50g 計算，超過 50g 以實重計算。將於出貨通知 Email 中告知確切金額。NT$38 為賣貨便國內物流費用（固定）。
@@ -289,6 +295,7 @@ function shopApp() {
     form: { name:'', phone:'', email:'', paymentMethod:'郵局銀行匯款' },
     cart: {},
     deadline: '',
+    orderedQty: {},
 
     get isClosed() {
       if (!this.deadline) return false;
@@ -318,8 +325,22 @@ function shopApp() {
         const data = await res.json();
         this.products = data.products || [];
         this.deadline = data.deadline || '';
+        this.orderedQty = data.orderedQty || {};
       } catch(e) { alert('載入商品失敗，請稍後再試。'); }
       finally { this.loading = false; }
+    },
+
+    soldOutQty(productName, sub) {
+      const key = productName + '|' + sub;
+      return this.orderedQty[key] || 0;
+    },
+    isSoldOut(product, sub) {
+      if (product.stockLimit === null || product.stockLimit === undefined) return false;
+      return this.soldOutQty(product.name, sub) >= product.stockLimit;
+    },
+    remaining(product, sub) {
+      if (product.stockLimit === null || product.stockLimit === undefined) return null;
+      return Math.max(0, product.stockLimit - this.soldOutQty(product.name, sub));
     },
 
     scrollToRecipient() { document.getElementById('recipient-section')?.scrollIntoView({behavior:'smooth'}); },
@@ -328,7 +349,10 @@ function shopApp() {
     toggleSub(product, sub) {
       const key = product.id+'_'+sub;
       if (this.cart[key]) { delete this.cart[key]; }
-      else { this.cart[key] = {id:product.id, name:product.name, sub, price:parseFloat(product.price)||0, twd:parseFloat(product.twd)||0, yen:parseFloat(product.yen)||0, qty:1}; }
+      else {
+        if (this.isSoldOut(product, sub)) return;
+        this.cart[key] = {id:product.id, name:product.name, sub, price:parseFloat(product.price)||0, twd:parseFloat(product.twd)||0, yen:parseFloat(product.yen)||0, qty:1};
+      }
       this.cart = {...this.cart};
     },
     getQty(id, sub) { return this.cart[id+'_'+sub]?.qty || 0; },
