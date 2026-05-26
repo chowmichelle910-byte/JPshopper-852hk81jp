@@ -108,17 +108,27 @@
                 <p class="text-[10px] mb-1" style="color:#aaa;">款式選擇（可複選）</p>
                 <div class="space-y-1 max-h-24 overflow-y-auto">
                   <template x-for="sub in product.subs" :key="sub">
-                    <div class="flex items-center justify-between bg-neutral-50 p-1 rounded text-[11px]">
+                    <div class="flex items-center justify-between bg-neutral-50 p-1 rounded text-[11px]"
+                         :style="isSoldOut(product, sub) ? 'background:#fff0f0;' : ''">
                       <label class="flex items-center space-x-1 flex-1 cursor-pointer truncate"
-                             :class="isClosed ? 'opacity-50 pointer-events-none' : ''">
+                             :class="(isClosed || isSoldOut(product, sub)) ? 'opacity-50 pointer-events-none' : ''">
                         <input type="checkbox"
                                :checked="isSubChecked(product.id, sub)"
-                               @change="!isClosed && toggleSub(product, sub)"
-                               :disabled="isClosed"
+                               @change="!isClosed && !isSoldOut(product, sub) && toggleSub(product, sub)"
+                               :disabled="isClosed || isSoldOut(product, sub)"
                                class="w-3 h-3">
                         <span class="truncate" style="color:#555;" x-text="sub"></span>
                       </label>
-                      <template x-if="isSubChecked(product.id, sub)">
+                      <!-- Sold Out 標籤 -->
+                      <template x-if="isSoldOut(product, sub)">
+                        <span style="font-size:9px; color:#c62828; font-weight:700; background:#fce4ec; padding:1px 5px; border-radius:3px; white-space:nowrap;">SOLD OUT</span>
+                      </template>
+                      <!-- 剩餘數量提示（剩1-3件時顯示） -->
+                      <template x-if="!isSoldOut(product, sub) && remaining(product, sub) !== null && remaining(product, sub) <= 3 && remaining(product, sub) > 0">
+                        <span style="font-size:9px; color:#e67e22; font-weight:600; white-space:nowrap;" x-text="'僅剩'+remaining(product, sub)+'件'"></span>
+                      </template>
+                      <!-- 數量加減器 -->
+                      <template x-if="isSubChecked(product.id, sub) && !isSoldOut(product, sub)">
                         <div class="flex items-center space-x-1 ml-1 bg-white border border-neutral-200 rounded">
                           <button @click="changeQty(product.id, sub, -1)" class="px-1 text-neutral-500 font-bold">-</button>
                           <span class="text-[10px] w-3 text-center" x-text="getQty(product.id, sub)"></span>
@@ -313,6 +323,7 @@ function shopApp() {
     form: { name:'', phone:'', email:'', paymentMethod:'PayMe' },
     cart: {},
     deadline: '',
+    orderedQty: {},
 
     get isClosed() {
       if (!this.deadline) return false;
@@ -343,8 +354,25 @@ function shopApp() {
         this.products = data.products || [];
         this.allAddresses = (data.addresses || []).map((item, i) => { item.originalIndex = i; return item; });
         this.deadline = data.deadline || '';
+        this.orderedQty = data.orderedQty || {};
       } catch(e) { alert('讀取商品失敗，請重試。'); }
       finally { this.loading = false; }
+    },
+
+    // 某款式的已購數量
+    soldOutQty(productName, sub) {
+      const key = productName + '|' + sub;
+      return this.orderedQty[key] || 0;
+    },
+    // 某款式是否售完（有限購且已達上限）
+    isSoldOut(product, sub) {
+      if (product.stockLimit === null || product.stockLimit === undefined) return false;
+      return this.soldOutQty(product.name, sub) >= product.stockLimit;
+    },
+    // 某款式剩餘數量
+    remaining(product, sub) {
+      if (product.stockLimit === null || product.stockLimit === undefined) return null;
+      return Math.max(0, product.stockLimit - this.soldOutQty(product.name, sub));
     },
 
     scrollToRecipient() { document.getElementById('recipient-section')?.scrollIntoView({behavior:'smooth'}); },
@@ -352,7 +380,11 @@ function shopApp() {
     isSubChecked(id, sub) { return !!this.cart[id+'_'+sub]; },
     toggleSub(product, sub) {
       const key = product.id+'_'+sub;
-      if (this.cart[key]) { delete this.cart[key]; } else { this.cart[key] = {id:product.id, name:product.name, sub, price:product.price, yen:product.yen||0, qty:1}; }
+      if (this.cart[key]) { delete this.cart[key]; }
+      else {
+        if (this.isSoldOut(product, sub)) return; // 已售完，禁止勾選
+        this.cart[key] = {id:product.id, name:product.name, sub, price:product.price, yen:product.yen||0, qty:1};
+      }
       this.cart = {...this.cart};
     },
     getQty(id, sub) { return this.cart[id+'_'+sub]?.qty || 0; },
@@ -411,7 +443,7 @@ function shopApp() {
       };
       try {
         await fetch(GAS_API_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-        alert(`🎉 訂單提交成功！\n\n應付總額：HK$${this.totalAmount}\n確認信已寄出，我哋會於收取付款後為客人訂購。\n\n如遇缺貨，則缺貨商品全額退款。多謝！`);
+        alert(`🎉 訂單提交成功！\n\n應付總額：HK$${this.totalAmount}\n確認信已寄出，多謝！`);
         this.cart={}; this.form.name=''; this.form.phone=''; this.form.email=''; this.selectedAddressIndex='';
       } catch(e) { alert('提交失敗，請檢查網絡連線。'); }
       finally { this.submitting=false; }
