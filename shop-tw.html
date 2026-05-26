@@ -166,32 +166,32 @@
         <div class="tw-notice">
           <div class="tw-notice-title">📦 賣貨便到貨取貨流程</div>
           <div class="space-y-2">
-            <div class="tw-notice-step"><span class="step-num">1</span><span>商品自日本購入後，店主將先運回香港集貨</span></div>
-            <div class="tw-notice-step"><span class="step-num">2</span><span>集貨完成後，店主將以 <strong>Email 通知您</strong>，並於賣貨便平台建立出貨單</span></div>
+            <div class="tw-notice-step"><span class="step-num">1</span><span>商品自日本購入後，會 <strong>1個月一次</strong> 寄送到台灣</span></div>
+            <div class="tw-notice-step"><span class="step-num">2</span><span>從日本寄出後，店主將以 <strong>Email 通知您</strong>，並於賣貨便平台建立出貨單</span></div>
             <div class="tw-notice-step"><span class="step-num">3</span><span>收到 Email 後，請於賣貨便選擇您方便的超商門市，並完成 <strong>國際運費 + NT$38 賣貨便運費</strong> 的付款</span></div>
             <div class="tw-notice-step"><span class="step-num">4</span><span>到貨後前往指定超商取貨，<strong>取貨付款</strong>即完成交易</span></div>
           </div>
-          <div style="margin-top:12px; padding:10px 12px; background:rgba(41,128,185,0.08); border-radius:6px; font-size:11px; color:#555; line-height:1.7;">
-            💡 <strong>運費說明：</strong>國際運費依商品重量計算，將於出貨通知 Email 中告知確切金額。NT$38 為賣貨便國內物流費用（固定）。
+          <div style="margin-top:12px; padding:10px 12px; background:rgba(41,128,185,0.08); border-radius:6px; font-size:11px; color:#555; line-height:1.8;">
+            💡 <strong>運費說明：</strong>國際運費依商品重量計算，<strong>NT$20 / 50g</strong>，不足 50g 以 50g 計算，超過 50g 以實重計算。將於出貨通知 Email 中告知確切金額。NT$38 為賣貨便國內物流費用（固定）。
           </div>
         </div>
       </div>
 
-      <!-- Payment（TW版只有銀行轉帳） -->
+      <!-- Payment（TW版：郵局匯款） -->
       <div class="jp-card p-4 space-y-3 mb-6">
         <h2 class="text-sm font-medium border-l-2 pl-2" style="border-color:#2980b9;">付款方式</h2>
-        <div class="px-2 space-y-2">
-          <label class="flex items-center space-x-2 text-sm cursor-pointer">
-            <input type="radio" name="payment" value="台灣銀行轉帳" x-model="form.paymentMethod">
-            <span>銀行轉帳（台灣）</span>
-          </label>
-          <label class="flex items-center space-x-2 text-sm cursor-pointer">
-            <input type="radio" name="payment" value="Line Pay" x-model="form.paymentMethod">
-            <span>LINE Pay</span>
+        <div class="px-2">
+          <label class="flex items-center space-x-2 text-sm">
+            <input type="radio" name="payment" value="郵局銀行匯款" x-model="form.paymentMethod" checked>
+            <span>郵局銀行匯款</span>
           </label>
         </div>
-        <div style="background:#f7f6f3; border-radius:6px; padding:10px 12px; font-size:11px; color:#777; line-height:1.7;">
-          ⚠️ 付款資訊將於確認訂單 Email 中提供，請先完成下單。
+        <div style="background:#f0f7ff; border:1px solid #bbdefb; border-radius:6px; padding:12px 14px; font-size:12px; color:#37474f; line-height:1.9;">
+          🏦 <strong>匯款資訊：</strong><br>
+          銀行：中華郵政（郵局）<br>
+          帳號：<strong>00461310-3896688</strong><br>
+          戶名：<strong>周惠怡</strong><br>
+          <span style="font-size:11px; color:#777; margin-top:6px; display:block;">⚠️ 匯款後請於確認 Email 回覆匯款截圖，並註明訂單編號。</span>
         </div>
       </div>
 
@@ -222,7 +222,7 @@
       <template x-for="item in cartItems" :key="item.id+'-'+item.sub">
         <div class="flex justify-between py-0.5 border-b border-dashed last:border-0" style="color:#888; border-color:#e0e0e0;">
           <span class="truncate max-w-[240px]" x-text="`${item.name} (${item.sub}) x${item.qty}`"></span>
-          <span class="font-medium tw-accent" x-text="`NT$${item.twd * item.qty}`"></span>
+          <span class="font-medium tw-accent" x-text="`NT$${parseFloat(item.twd||0) * parseInt(item.qty||1)}`"></span>
         </div>
       </template>
       <template x-if="cartItems.length===0">
@@ -290,7 +290,7 @@ function shopApp() {
     loading: true, submitting: false,
     displayEventName: '', sheetEventName: '',
     products: [],
-    form: { name:'', phone:'', email:'', paymentMethod:'台灣銀行轉帳' },
+    form: { name:'', phone:'', email:'', paymentMethod:'郵局銀行匯款' },
     cart: {},
     deadline: '',
 
@@ -332,7 +332,7 @@ function shopApp() {
     toggleSub(product, sub) {
       const key = product.id+'_'+sub;
       if (this.cart[key]) { delete this.cart[key]; }
-      else { this.cart[key] = {id:product.id, name:product.name, sub, price:product.price, twd:product.twd||0, yen:product.yen||0, qty:1}; }
+      else { this.cart[key] = {id:product.id, name:product.name, sub, price:parseFloat(product.price)||0, twd:parseFloat(product.twd)||0, yen:parseFloat(product.yen)||0, qty:1}; }
       this.cart = {...this.cart};
     },
     getQty(id, sub) { return this.cart[id+'_'+sub]?.qty || 0; },
@@ -343,7 +343,7 @@ function shopApp() {
       this.cart = {...this.cart};
     },
     get cartItems() { return Object.values(this.cart); },
-    get subtotal() { return this.cartItems.reduce((s,i) => s + (i.twd||0)*i.qty, 0); },
+    get subtotal() { return this.cartItems.reduce((s,i) => s + parseFloat(i.twd||0)*parseInt(i.qty||1), 0); },
 
     async submitOrder() {
       if (this.isClosed) { alert('此活動已截止收單。'); return; }
