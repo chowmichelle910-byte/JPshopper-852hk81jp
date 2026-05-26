@@ -95,8 +95,8 @@
     .stock-item.soldout { border-color: #fca5a5; background: #fff5f5; }
     .stock-item-img { width: 44px; height: 44px; object-fit: cover; border-radius: 6px; border: 1px solid #eee; flex-shrink: 0; }
     .stock-item-info { flex: 1; min-width: 0; }
-    .stock-item-name { font-size: 12px; font-weight: 600; color: #222; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .stock-item-subs { font-size: 11px; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+    .stock-item-name { font-size: 12px; font-weight: 600; color: #222; line-height: 1.4; word-break: break-word; }
+    .stock-item-subs { font-size: 11px; color: #888; line-height: 1.4; margin-top: 2px; word-break: break-word; }
     .stock-item-controls { display: flex; align-items: center; flex-shrink: 0; }
     .stock-soldout-btn {
       padding: 6px 12px; font-size: 11px; font-weight: 700;
@@ -321,7 +321,7 @@
       div.innerHTML = `
         <img class="stock-item-img" src="${imgSrc}" onerror="this.src='${fallbackImg}'" />
         <div class="stock-item-info">
-          <div class="stock-item-name" title="${p.name}">${p.name}</div>
+          <div class="stock-item-name">${p.name}</div>
           <div class="stock-item-subs">${p.subs || '—'}</div>
         </div>
         <div class="stock-item-controls">
