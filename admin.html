@@ -666,7 +666,7 @@ function renderOrders(orders, bodyId, region, cls) {
     return;
   }
 
-  const fallback = 'https://res.cloudinary.com/disr3dmsj/image/upload/v1776507968/uploads/2025-08/km1wihlxni7v7docvkb0.webp';
+  const fallback = 'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'%3E%3Crect width='1' height='1' fill='%23111'/%3E%3C/svg%3E'http://www.w3.org/2000/svg' width='1' height='1'%3E%3Crect width='1' height='1' fill='%23111'/%3E%3C/svg%3E';
   const currency = cls === 'tw' ? 'NT$' : 'HK$';
 
   orders.forEach(order => {
@@ -752,6 +752,8 @@ function renderOrders(orders, bodyId, region, cls) {
           <span class="ocard-total-label">${payMethod}</span>
           <span class="ocard-total-amount ${cls}">${currency} ${order.amount || 0}</span>
         </div>
+        ${order.paymentTime ? `<div style="font-size:11px; color:var(--success); margin-top:8px; padding-top:8px; border-top:1px dashed var(--border);">✅ 已收款確認：${formatPaymentTime(order.paymentTime)}</div>` : ''}
+        ${order.remark ? `<div style="font-size:11px; color:var(--muted); margin-top:4px;">📝 ${order.remark}</div>` : ''}
       </div>`;
     container.appendChild(card);
   });
@@ -864,7 +866,7 @@ function renderStockGrid() {
   const grid = document.getElementById('stockGrid');
   if (!stockData.length) { grid.innerHTML = '<div class="stock-empty">此分頁沒有商品</div>'; return; }
   grid.innerHTML = '';
-  const fallback = 'https://res.cloudinary.com/disr3dmsj/image/upload/v1776507968/uploads/2025-08/km1wihlxni7v7docvkb0.webp';
+  const fallback = 'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'%3E%3Crect width='1' height='1' fill='%23111'/%3E%3C/svg%3E'http://www.w3.org/2000/svg' width='1' height='1'%3E%3Crect width='1' height='1' fill='%23111'/%3E%3C/svg%3E';
 
   stockData.forEach(p => {
     const imgSrc = (p.photo && p.photo.startsWith('http')) ? p.photo : fallback;
@@ -1071,7 +1073,7 @@ function loadOrderSummary(eventName) {
 
 function renderOrderSummary() {
   const grid = document.getElementById('orderSummaryGrid');
-  const fallback = 'https://res.cloudinary.com/disr3dmsj/image/upload/v1776507968/uploads/2025-08/km1wihlxni7v7docvkb0.webp';
+  const fallback = 'data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1' height='1'%3E%3Crect width='1' height='1' fill='%23111'/%3E%3C/svg%3E'http://www.w3.org/2000/svg' width='1' height='1'%3E%3Crect width='1' height='1' fill='%23111'/%3E%3C/svg%3E';
 
   if (!purchaseData.length) {
     grid.innerHTML = '<div class="os-empty">此活動沒有已付款訂單</div>';
@@ -1288,6 +1290,13 @@ function addNewProduct() {
 }
 
 function pad(n) { return n < 10 ? '0' + n : n; }
+
+function formatPaymentTime(val) {
+  if (!val) return '';
+  const d = new Date(val);
+  if (isNaN(d)) return val.toString();
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
 
 // ── Sidebar open/close ──
 function openSidebar() {
