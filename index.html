@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>852hk.81jp — 現場快閃代購</title>
+  <title>852hk.81jp — 日本代購</title>
   <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;500;600&family=Noto+Sans+HK:wght@300;400;500&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -14,13 +14,14 @@
       --ink: #1a1a1a;
       --muted: #888888;
       --border: #e8e6e1;
-      --accent: #1a1a1a;
       --hk: #c0392b;
       --tw: #2980b9;
       --tag-open: #e8f5e9;
       --tag-open-text: #2e7d32;
       --tag-closed: #fce4ec;
       --tag-closed-text: #c62828;
+      --mercari: #e85d04;
+      --general: #6d597a;
     }
 
     body {
@@ -41,26 +42,21 @@
       display: flex; align-items: center; justify-content: space-between;
       padding: 0 20px;
     }
-
     .brand {
       font-family: 'Shippori Mincho', serif;
       font-size: 17px; font-weight: 600; letter-spacing: 3px;
       color: var(--ink); text-decoration: none;
     }
-
     .hamburger {
-      width: 40px; height: 40px;
-      border: none; background: none; cursor: pointer;
+      width: 40px; height: 40px; border: none; background: none; cursor: pointer;
       display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 5px;
-      border-radius: 8px;
-      transition: background 0.2s;
+      border-radius: 8px; transition: background 0.2s;
     }
     .hamburger:hover { background: var(--border); }
     .hamburger span {
       display: block; width: 22px; height: 1.5px;
       background: var(--ink); border-radius: 2px;
-      transition: all 0.3s ease;
-      transform-origin: center;
+      transition: all 0.3s ease; transform-origin: center;
     }
     .hamburger.open span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
     .hamburger.open span:nth-child(2) { opacity: 0; transform: scaleX(0); }
@@ -69,12 +65,9 @@
     /* ── Drawer ── */
     .drawer-overlay {
       position: fixed; inset: 0; z-index: 90;
-      background: rgba(0,0,0,0.3);
-      opacity: 0; pointer-events: none;
-      transition: opacity 0.3s;
+      background: rgba(0,0,0,0.3); opacity: 0; pointer-events: none; transition: opacity 0.3s;
     }
     .drawer-overlay.open { opacity: 1; pointer-events: all; }
-
     .drawer {
       position: fixed; top: 0; right: 0; bottom: 0; z-index: 95;
       width: 300px; background: var(--card);
@@ -84,165 +77,139 @@
       border-left: 1px solid var(--border);
     }
     .drawer.open { transform: translateX(0); }
-
-    .drawer-header {
-      padding: 24px 20px 16px;
-      border-bottom: 1px solid var(--border);
-    }
-    .drawer-title {
-      font-size: 11px; letter-spacing: 3px; color: var(--muted);
-      text-transform: uppercase; margin-bottom: 16px;
-    }
-
-    /* Region toggle inside drawer */
-    .region-toggle {
-      display: flex; background: var(--bg);
-      border-radius: 8px; padding: 3px; gap: 2px;
-    }
+    .drawer-header { padding: 24px 20px 16px; border-bottom: 1px solid var(--border); }
+    .drawer-title { font-size: 11px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; margin-bottom: 16px; }
+    .region-toggle { display: flex; background: var(--bg); border-radius: 8px; padding: 3px; gap: 2px; }
     .region-btn {
       flex: 1; padding: 7px 0; font-size: 12px; font-weight: 500;
       border: none; background: none; cursor: pointer;
-      border-radius: 6px; color: var(--muted);
-      transition: all 0.2s; letter-spacing: 1px;
+      border-radius: 6px; color: var(--muted); transition: all 0.2s; letter-spacing: 1px;
     }
-    .region-btn.active {
-      background: var(--card);
-      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-      color: var(--ink);
-    }
+    .region-btn.active { background: var(--card); box-shadow: 0 1px 4px rgba(0,0,0,0.1); color: var(--ink); }
     .region-btn.hk.active { color: var(--hk); }
     .region-btn.tw.active { color: var(--tw); }
-
     .drawer-body { flex: 1; overflow-y: auto; padding: 12px 0; }
-
-    .drawer-section-label {
-      font-size: 10px; letter-spacing: 2px; color: var(--muted);
-      text-transform: uppercase; padding: 8px 20px 4px;
-    }
-
+    .drawer-section-label { font-size: 10px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; padding: 8px 20px 4px; }
     .drawer-event-item {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 20px;
-      text-decoration: none; color: var(--ink);
-      border-bottom: 1px solid var(--border);
-      transition: background 0.15s;
-      cursor: pointer;
+      padding: 12px 20px; text-decoration: none; color: var(--ink);
+      border-bottom: 1px solid var(--border); transition: background 0.15s; cursor: pointer;
     }
     .drawer-event-item:hover { background: var(--bg); }
     .drawer-event-item:last-child { border-bottom: none; }
-
     .dei-name { font-size: 13px; font-weight: 500; }
-    .dei-status {
-      font-size: 10px; font-weight: 600; padding: 2px 8px;
-      border-radius: 20px; letter-spacing: 0.5px;
-    }
+    .dei-status { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
     .dei-status.open { background: var(--tag-open); color: var(--tag-open-text); }
     .dei-status.closed { background: var(--tag-closed); color: var(--tag-closed-text); }
 
-    /* ── Main content ── */
-    .main {
-      max-width: 480px; margin: 0 auto;
-      padding: 88px 20px 60px;
-    }
+    /* ── Main ── */
+    .main { max-width: 480px; margin: 0 auto; padding: 88px 20px 60px; }
 
     .hero { text-align: center; margin-bottom: 48px; }
-    .hero-brand {
-      font-family: 'Shippori Mincho', serif;
-      font-size: 28px; font-weight: 600; letter-spacing: 6px;
-      color: var(--ink); margin-bottom: 10px;
-    }
-    .hero-divider {
-      width: 36px; height: 1px; background: var(--muted);
-      margin: 12px auto;
-    }
-    .hero-sub {
-      font-size: 11px; color: var(--muted); letter-spacing: 2px;
-      text-transform: uppercase;
-    }
+    .hero-brand { font-family: 'Shippori Mincho', serif; font-size: 28px; font-weight: 600; letter-spacing: 6px; color: var(--ink); }
+    .hero-divider { width: 36px; height: 1px; background: var(--muted); margin: 12px auto; }
+    .hero-sub { font-size: 11px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; }
 
-    /* Region pill on main */
-    .region-pill-wrap {
-      display: flex; justify-content: center; margin-bottom: 32px;
-    }
-    .region-pill {
-      display: flex; background: var(--card);
-      border: 1px solid var(--border); border-radius: 40px; padding: 4px;
-    }
+    /* Region pill */
+    .region-pill-wrap { display: flex; justify-content: center; margin-bottom: 32px; }
+    .region-pill { display: flex; background: var(--card); border: 1px solid var(--border); border-radius: 40px; padding: 4px; }
     .rpill-btn {
       padding: 7px 22px; font-size: 12px; font-weight: 500;
       border: none; background: none; cursor: pointer;
-      border-radius: 36px; color: var(--muted);
-      transition: all 0.2s; letter-spacing: 0.5px;
+      border-radius: 36px; color: var(--muted); transition: all 0.2s; letter-spacing: 0.5px;
     }
-    .rpill-btn.active {
-      color: var(--card);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    }
+    .rpill-btn.active { color: var(--card); box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
     .rpill-btn.hk.active { background: var(--hk); }
     .rpill-btn.tw.active { background: var(--tw); }
 
-    /* Event cards */
-    .event-list { display: flex; flex-direction: column; gap: 12px; }
+    /* Section header */
+    .section-header {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 16px; margin-top: 40px;
+    }
+    .section-header:first-of-type { margin-top: 0; }
+    .section-line { flex: 1; height: 1px; background: var(--border); }
+    .section-title { font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; white-space: nowrap; }
+    .section-title.flash { color: var(--ink); }
+    .section-title.mercari { color: var(--mercari); }
+    .section-title.general { color: var(--general); }
 
+    /* Event cards */
+    .event-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 8px; }
     .event-card {
-      background: var(--card);
-      border: 1px solid var(--border);
+      background: var(--card); border: 1px solid var(--border);
       border-radius: 12px; padding: 18px 20px;
       text-decoration: none; color: var(--ink);
       display: flex; align-items: center; justify-content: space-between;
-      transition: all 0.25s ease;
-      position: relative; overflow: hidden;
+      transition: all 0.25s ease; position: relative; overflow: hidden;
     }
-    .event-card::before {
-      content: ''; position: absolute; left: 0; top: 0; bottom: 0;
-      width: 3px;
-      transition: background 0.2s;
-    }
+    .event-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
     .event-card.hk::before { background: var(--hk); }
     .event-card.tw::before { background: var(--tw); }
-    .event-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.07);
-    }
+    .event-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.07); }
     .event-card.expired { opacity: 0.55; pointer-events: none; }
-
     .ec-left { flex: 1; padding-left: 10px; }
     .ec-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
-    .ec-region {
-      font-size: 10px; letter-spacing: 1px;
-      color: var(--muted); text-transform: uppercase;
-    }
+    .ec-region { font-size: 10px; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; }
     .ec-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-    .ec-badge {
-      font-size: 10px; font-weight: 600; padding: 3px 10px;
-      border-radius: 20px;
-    }
+    .ec-badge { font-size: 10px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
     .ec-badge.open { background: var(--tag-open); color: var(--tag-open-text); }
     .ec-badge.closed { background: var(--tag-closed); color: var(--tag-closed-text); }
     .ec-arrow { font-size: 16px; color: #cccccc; }
+    .ec-countdown { font-size: 10px; color: #e67e22; }
 
-    .loading-wrap {
-      text-align: center; padding: 60px 0;
-      color: var(--muted); font-size: 13px;
-    }
-    .spinner {
-      border: 2px solid rgba(0,0,0,0.08);
-      width: 22px; height: 22px; border-radius: 50%;
-      border-left-color: var(--ink);
-      animation: spin 0.8s linear infinite;
-      margin: 0 auto 12px;
-    }
+    /* Loading */
+    .loading-wrap { text-align: center; padding: 40px 0; color: var(--muted); font-size: 13px; }
+    .spinner { border: 2px solid rgba(0,0,0,0.08); width: 22px; height: 22px; border-radius: 50%; border-left-color: var(--ink); animation: spin 0.8s linear infinite; margin: 0 auto 12px; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    .empty-msg { text-align: center; padding: 20px; color: var(--muted); font-size: 13px; line-height: 1.8; }
 
-    .empty-msg {
-      text-align: center; padding: 40px 20px;
+    /* ── 靜態服務卡片（Mercari / 通常商品）── */
+    .service-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 20px;
+      position: relative; overflow: hidden;
+    }
+    .service-card::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+    .service-card.mercari::before { background: var(--mercari); }
+    .service-card.general::before { background: var(--general); }
+
+    .service-card-inner { padding-left: 10px; }
+    .service-points { list-style: none; margin-bottom: 14px; }
+    .service-points li {
+      font-size: 13px; color: #333; line-height: 1.8;
+      padding: 2px 0;
+    }
+    .service-rate {
+      font-size: 12px; color: var(--muted); line-height: 1.8;
+      background: var(--bg); border-radius: 8px;
+      padding: 10px 14px; margin-bottom: 14px;
+    }
+    .service-rate strong { color: var(--ink); }
+    .service-contact { display: flex; flex-direction: column; gap: 6px; }
+    .service-contact-label { font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 2px; }
+    .contact-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 12px; color: var(--ink); text-decoration: none;
+      padding: 7px 12px; background: var(--bg);
+      border: 1px solid var(--border); border-radius: 8px;
+      transition: all 0.2s; font-weight: 500;
+    }
+    .contact-link:hover { border-color: var(--ink); }
+
+    /* Region-sensitive: hide/show */
+    .hk-only { display: block; }
+    .tw-only { display: none; }
+    body.tw .hk-only { display: none; }
+    body.tw .tw-only { display: block; }
+
+    /* Coming soon placeholder */
+    .coming-soon {
+      text-align: center; padding: 28px 20px;
       color: var(--muted); font-size: 13px; line-height: 1.8;
+      border: 1.5px dashed var(--border); border-radius: 12px;
     }
-
-    /* Deadline countdown */
-    .ec-countdown {
-      font-size: 10px; color: #e67e22; letter-spacing: 0.3px;
-    }
+    .coming-soon .cs-icon { font-size: 24px; margin-bottom: 8px; }
   </style>
 </head>
 <body>
@@ -268,10 +235,17 @@
     </div>
   </div>
   <div class="drawer-body">
-    <div class="drawer-section-label">進行中活動</div>
+    <div class="drawer-section-label">快閃代購活動</div>
     <div id="drawerEventList">
       <div style="padding:20px; color:#aaa; font-size:13px;">載入中...</div>
     </div>
+    <div class="drawer-section-label" style="margin-top:8px;">其他服務</div>
+    <a class="drawer-event-item" href="#mercari" onclick="closeDrawer()">
+      <span class="dei-name">🇯🇵 Mercari 代購</span>
+    </a>
+    <a class="drawer-event-item" href="#general" onclick="closeDrawer()">
+      <span class="dei-name">🛍️ 通常商品代購</span>
+    </a>
   </div>
 </div>
 
@@ -280,7 +254,7 @@
   <div class="hero">
     <div class="hero-brand">852hk.81jp</div>
     <div class="hero-divider"></div>
-    <div class="hero-sub">現場快閃代購</div>
+    <div class="hero-sub">日本代購服務</div>
   </div>
 
   <div class="region-pill-wrap">
@@ -290,98 +264,166 @@
     </div>
   </div>
 
+  <!-- ── Section 1: 現場快閃代購 ── -->
+  <div class="section-header">
+    <div class="section-line"></div>
+    <div class="section-title flash">⚡ 現場快閃代購</div>
+    <div class="section-line"></div>
+  </div>
+
   <div id="loadingWrap" class="loading-wrap">
     <div class="spinner"></div>
     <div>正在獲取最新快閃活動...</div>
   </div>
   <div id="eventList" class="event-list" style="display:none;"></div>
+
+  <!-- ── Section 2: Mercari 代購 ── -->
+  <div class="section-header" id="mercari" style="scroll-margin-top: 72px;">
+    <div class="section-line"></div>
+    <div class="section-title mercari">🇯🇵 日本 Mercari 代購</div>
+    <div class="section-line"></div>
+  </div>
+
+  <!-- HK Mercari -->
+  <div class="service-card mercari hk-only">
+    <div class="service-card-inner">
+      <ul class="service-points">
+        <li>✨ 每兩星期由日本寄出</li>
+        <li>✨ 無其他手續費</li>
+        <li>✨ 收到款項即買</li>
+        <li>✨ 到港後用 順豐到付 / 郵局易寄取 +$10至$13 / 平郵實報實銷 寄出</li>
+        <li>✨ 國際運費只收實重，無體積重</li>
+      </ul>
+      <div class="service-rate">
+        <strong>匯率</strong>以每團每位客人嘅總金額計算<br>
+        <strong>到港運費：</strong>HK$4.5／50g（50g起跳，超過50g以實重計算）
+      </div>
+      <div class="service-contact">
+        <div class="service-contact-label">👉🏻 歡迎帶 link 查詢報價</div>
+        <a class="contact-link" href="https://www.instagram.com/852hk.81jp?igsh=anhqNzQ1dGhlaWs4&utm_source=qr" target="_blank">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+          @852hk.81jp
+        </a>
+        <a class="contact-link" href="https://wa.me/85293375712" target="_blank">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+          WhatsApp
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- TW Mercari -->
+  <div class="service-card mercari tw-only">
+    <div class="service-card-inner">
+      <ul class="service-points">
+        <li>✓ 每月從日本寄出</li>
+        <li>✓ 無其他手續費</li>
+        <li>✓ 收到匯款馬上代購入</li>
+        <li>✓ 到台後以賣貨便收取國際運費，加國內運費 NT$38 寄出</li>
+        <li>✓ 國際運費只收實重，無體積重</li>
+      </ul>
+      <div class="service-rate">
+        <strong>匯率</strong>以每團每位客人的總購買金額計算<br>
+        <strong>到台運費：</strong>NT$20／50g（50g起跳，超過50g以實重計算）
+      </div>
+      <div class="service-contact">
+        <div class="service-contact-label">🔗 查詢報價請傳送 Mercari 商品連結</div>
+        <a class="contact-link" href="https://www.instagram.com/852hk.81jp?igsh=anhqNzQ1dGhlaWs4&utm_source=qr" target="_blank">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+          @852hk.81jp
+        </a>
+        <a class="contact-link" href="https://wa.me/85293375712" target="_blank">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></svg>
+          WhatsApp
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Section 3: 通常商品代購 ── -->
+  <div class="section-header" id="general" style="scroll-margin-top: 72px;">
+    <div class="section-line"></div>
+    <div class="section-title general">🛍️ 通常商品代購</div>
+    <div class="section-line"></div>
+  </div>
+
+  <div class="coming-soon">
+    <div class="cs-icon">🚧</div>
+    <div>即將推出，敬請期待！</div>
+    <div style="font-size:11px; margin-top:6px; color:#bbb;">Coming Soon</div>
+  </div>
+
 </main>
 
 <script>
 const GAS_API_URL = "https://script.google.com/macros/s/AKfycbzgsFv9_AjExH0VCh1m6DX18qTmXMKwO0xiBGQfYqvO2Q6nb5ZNeXRbsdRsbGVcFidIQw/exec";
-const EXCLUDED = ["Blank", "易寄取地址", "訂單紀錄", "Sheet1", "工作表1", "收單截止時間"];
+const EXCLUDED = ["Blank", "易寄取地址", "訂單紀錄", "Sheet1", "工作表1", "收單截止時間", "購貨紀錄"];
 
 let currentRegion = localStorage.getItem('region') || 'hk';
 let allSheets = [];
 let deadlines = {};
 
-// ── Drawer toggle ──
+// ── Drawer ──
 const hamburgerBtn = document.getElementById('hamburgerBtn');
 const drawer = document.getElementById('drawer');
 const drawerOverlay = document.getElementById('drawerOverlay');
 
-function openDrawer() {
-  drawer.classList.add('open');
-  drawerOverlay.classList.add('open');
-  hamburgerBtn.classList.add('open');
-}
-function closeDrawer() {
-  drawer.classList.remove('open');
-  drawerOverlay.classList.remove('open');
-  hamburgerBtn.classList.remove('open');
-}
+function openDrawer() { drawer.classList.add('open'); drawerOverlay.classList.add('open'); hamburgerBtn.classList.add('open'); }
+function closeDrawer() { drawer.classList.remove('open'); drawerOverlay.classList.remove('open'); hamburgerBtn.classList.remove('open'); }
 hamburgerBtn.addEventListener('click', () => drawer.classList.contains('open') ? closeDrawer() : openDrawer());
 drawerOverlay.addEventListener('click', closeDrawer);
 
-// ── Region toggle ──
+// ── Region ──
 function setRegion(region) {
   currentRegion = region;
   localStorage.setItem('region', region);
-
+  // 切換 body class 控制 hk-only / tw-only
+  document.body.classList.toggle('tw', region === 'tw');
   document.querySelectorAll('[data-region]').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.region === region);
   });
-
   renderCards();
   renderDrawer();
 }
-
 document.querySelectorAll('[data-region]').forEach(btn => {
   btn.addEventListener('click', () => setRegion(btn.dataset.region));
 });
 
 // ── Deadline helpers ──
-function isExpired(eventName) {
-  if (!deadlines[eventName]) return false;
-  const dl = new Date(deadlines[eventName].replace(/\//g, '-'));
+function isExpired(name) {
+  if (!deadlines[name]) return false;
+  const dl = new Date(deadlines[name].replace(/\//g, '-'));
   return isNaN(dl) ? false : new Date() > dl;
 }
-
-function countdownText(eventName) {
-  if (!deadlines[eventName]) return '';
-  const dl = new Date(deadlines[eventName].replace(/\//g, '-'));
+function countdownText(name) {
+  if (!deadlines[name]) return '';
+  const dl = new Date(deadlines[name].replace(/\//g, '-'));
   if (isNaN(dl)) return '';
   const diff = dl - new Date();
   if (diff <= 0) return '已截止';
   const h = Math.floor(diff / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
   if (h < 24) return `截單倒數 ${h}h ${m}m`;
-  const d = Math.floor(h / 24);
-  return `截單倒數 ${d} 天`;
+  return `截單倒數 ${Math.floor(h / 24)} 天`;
+}
+function buildUrl(name) {
+  const slug = name.replace(/\s+/g, '-');
+  return (currentRegion === 'tw' ? '/zh-tw/' : '/zh-hk/') + slug + '.html';
 }
 
-function buildUrl(sheetName) {
-  const slug = sheetName.replace(/\s+/g, '-');
-  const prefix = currentRegion === 'tw' ? '/zh-tw/' : '/zh-hk/';
-  return prefix + slug + '.html';
-}
-
-// ── Render main cards ──
+// ── Render event cards ──
 function renderCards() {
   const list = document.getElementById('eventList');
   list.innerHTML = '';
   const filtered = allSheets.filter(n => EXCLUDED.indexOf(n) === -1);
-
   if (filtered.length === 0) {
     list.innerHTML = '<div class="empty-msg">📭 暫時沒有進行中的快閃代購活動</div>';
     return;
   }
-
   filtered.forEach(name => {
     const expired = isExpired(name);
     const cd = countdownText(name);
     const regionLabel = currentRegion === 'tw' ? '台灣版 TWD' : '香港版 HKD';
-
     const a = document.createElement('a');
     a.className = `event-card ${currentRegion}${expired ? ' expired' : ''}`;
     a.href = buildUrl(name);
@@ -399,17 +441,15 @@ function renderCards() {
   });
 }
 
-// ── Render drawer event list ──
+// ── Render drawer ──
 function renderDrawer() {
   const container = document.getElementById('drawerEventList');
   container.innerHTML = '';
   const filtered = allSheets.filter(n => EXCLUDED.indexOf(n) === -1);
-
   if (filtered.length === 0) {
     container.innerHTML = '<div style="padding:16px 20px; color:#aaa; font-size:13px;">目前沒有活動</div>';
     return;
   }
-
   filtered.forEach(name => {
     const expired = isExpired(name);
     const a = document.createElement('a');
@@ -423,7 +463,7 @@ function renderDrawer() {
   });
 }
 
-// ── Load data ──
+// ── Load ──
 async function loadData() {
   try {
     const [sheetsRes, dlRes] = await Promise.all([
@@ -432,24 +472,19 @@ async function loadData() {
     ]);
     allSheets = await sheetsRes.json();
     deadlines = await dlRes.json();
-  } catch (e) {
-    console.error(e);
-    allSheets = [];
-    deadlines = {};
-  }
+  } catch(e) { console.error(e); allSheets = []; deadlines = {}; }
 
   document.getElementById('loadingWrap').style.display = 'none';
   document.getElementById('eventList').style.display = 'flex';
 
-  // Init region buttons
+  // 初始化地區狀態
+  document.body.classList.toggle('tw', currentRegion === 'tw');
   document.querySelectorAll('[data-region]').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.region === currentRegion);
   });
 
   renderCards();
   renderDrawer();
-
-  // Refresh countdown every minute
   setInterval(renderCards, 60000);
 }
 
