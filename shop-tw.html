@@ -65,10 +65,10 @@
   <div id="drawerEvents" style="flex:1; overflow-y:auto;"></div>
 </div>
 
-<div class="max-w-md mx-auto px-4" style="padding-top: 68px;">
+<div class="max-w-6xl mx-auto px-4" style="padding-top: 68px;">
 
   <!-- Event title -->
-  <header class="text-center my-6">
+  <header class="text-center my-6 max-w-md mx-auto">
     <div style="font-size:10px; letter-spacing:3px; color:#2980b9; text-transform:uppercase; margin-bottom:6px;">台灣版 · TWD</div>
     <h1 class="brand-serif text-xl font-semibold tracking-widest" x-text="displayEventName || '載入中...'"></h1>
     <div style="width:36px; height:1px; background:#bbb; margin:12px auto 0;"></div>
@@ -90,7 +90,7 @@
   <template x-if="!loading">
     <div>
       <!-- Products grid -->
-      <div class="grid grid-cols-2 gap-3 mb-8">
+      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-8">
         <template x-for="product in products" :key="product.id">
           <div class="jp-card p-2.5 flex flex-col relative"
                :class="isProductSelected(product.id) ? 'ring-1' : ''"
@@ -148,7 +148,7 @@
       </div>
 
       <!-- Recipient form -->
-      <div id="recipient-section" class="jp-card p-4 space-y-4 mb-6 scroll-mt-4">
+      <div id="recipient-section" class="jp-card p-4 space-y-4 mb-6 scroll-mt-4 max-w-2xl">
         <h2 class="text-sm font-medium border-l-2 pl-2" style="border-color:#2980b9;">訂購人資料</h2>
         <div>
           <label class="block text-xs mb-1" style="color:#888;">姓名 *</label>
@@ -167,7 +167,7 @@
       </div>
 
       <!-- 台灣收件說明（取代易寄取選址） -->
-      <div class="jp-card p-4 mb-6">
+      <div class="jp-card p-4 mb-6 max-w-2xl">
         <h2 class="text-sm font-medium border-l-2 pl-2 mb-4" style="border-color:#2980b9;">台灣取貨方式</h2>
         <div class="tw-notice">
           <div class="tw-notice-title">📦 賣貨便到貨取貨流程</div>
@@ -184,7 +184,7 @@
       </div>
 
       <!-- Payment（TW版：郵局匯款） -->
-      <div class="jp-card p-4 space-y-3 mb-6">
+      <div class="jp-card p-4 space-y-3 mb-6 max-w-2xl">
         <h2 class="text-sm font-medium border-l-2 pl-2" style="border-color:#2980b9;">付款方式</h2>
         <div class="px-2">
           <label class="flex items-center space-x-2 text-sm">
@@ -410,7 +410,7 @@ function shopApp() {
 
       try {
         await fetch(GAS_API_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-        alert(`🎉 訂單送出成功！\n\n商品小計：NT$${this.subtotal}\n（運費將於出貨時另行通知）\n\n確認信已寄出，謝謝您的支持！`);
+        alert(`🎉 訂單送出成功！\n\n商品小計：NT$${this.subtotal}\n確認信已寄出，請於指定時間內完成匯款。\n如遇缺貨，我們將依收到匯款的先後順序安排商品。謝謝！`);
         this.cart={}; this.form.name=''; this.form.phone=''; this.form.email='';
       } catch(e) { alert('送出失敗，請確認網路連線。'); }
       finally { this.submitting=false; }
