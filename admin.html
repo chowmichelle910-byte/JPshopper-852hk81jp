@@ -190,6 +190,77 @@
     .stock-soldout-btn:hover { opacity: 0.85; }
     .stock-empty { color: #bbb; font-size: 13px; text-align: center; padding: 40px; grid-column: 1/-1; }
 
+    /* ── 訂單卡片 ── */
+    .order-cards { display: flex; flex-direction: column; gap: 12px; }
+    .ocard {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden;
+      transition: box-shadow 0.2s;
+    }
+    .ocard:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+    .ocard.overdue-card { border-color: #fca5a5; }
+    .ocard-top {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 16px 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .ocard-date { font-size: 12px; color: var(--muted); }
+    .ocard-date.overdue { color: var(--danger); font-weight: 700; }
+    .ocard-status-btn {
+      padding: 4px 12px; border: none; border-radius: 20px;
+      font-size: 11px; font-weight: 700; cursor: pointer; transition: all 0.15s;
+    }
+    .ocard-status-btn.unpaid {
+      background: #111; color: #fff;
+    }
+    .ocard-status-btn.unpaid:hover { background: #333; }
+    .ocard-status-btn.paid {
+      background: #f0fdf4; color: var(--success);
+      border: 1px solid #bbf7d0; cursor: default;
+    }
+    .ocard-body { padding: 10px 16px 14px; }
+    .ocard-orderid {
+      font-family: monospace; font-size: 11px;
+      color: var(--muted); margin-bottom: 10px;
+    }
+    .ocard-customer { margin-bottom: 10px; }
+    .ocard-customer-name { font-size: 14px; font-weight: 700; color: var(--ink); }
+    .ocard-customer-meta { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.6; }
+    .ocard-pickup { font-size: 12px; color: var(--accent); font-weight: 500; margin-top: 4px; }
+    .ocard-event {
+      display: inline-flex; align-items: center; gap: 6px;
+      margin-bottom: 10px;
+    }
+    .ocard-event-badge {
+      background: #f1f3f5; color: #495057;
+      padding: 3px 8px; border-radius: 5px;
+      font-size: 11px; font-weight: 600;
+    }
+    /* 商品圖片列 */
+    .ocard-items { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+    .ocard-item {
+      display: flex; align-items: center; gap: 10px;
+      background: #fafafa; border-radius: 8px; padding: 8px 10px;
+    }
+    .ocard-item-img {
+      width: 40px; height: 40px; object-fit: cover;
+      border-radius: 6px; border: 1px solid var(--border); flex-shrink: 0;
+    }
+    .ocard-item-info { flex: 1; min-width: 0; }
+    .ocard-item-name { font-size: 12px; font-weight: 600; color: #222; line-height: 1.4; word-break: break-word; }
+    .ocard-item-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    .ocard-item-price { font-size: 12px; font-weight: 700; color: var(--ink); white-space: nowrap; flex-shrink: 0; }
+    .ocard-total {
+      display: flex; justify-content: flex-end; align-items: baseline; gap: 6px;
+      padding-top: 10px; border-top: 1px dashed var(--border);
+    }
+    .ocard-total-label { font-size: 11px; color: var(--muted); }
+    .ocard-total-amount { font-size: 16px; font-weight: 800; }
+    .ocard-total-amount.hk { color: var(--hk); }
+    .ocard-total-amount.tw { color: var(--tw); }
+    .section-card-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 24px; }
+    .section-card-header { padding: 14px 20px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+
     /* ── 訂貨區 ── */
     .order-summary-grid { display: flex; flex-direction: column; gap: 14px; }
     .oscard {
@@ -336,40 +407,28 @@
       <div class="page active" id="page-orders">
 
         <!-- HK 訂單 -->
-        <div class="card" style="padding: 0; overflow: hidden;">
-          <div style="padding: 16px 20px 12px; border-bottom: 1px solid var(--border); display:flex; align-items:center; gap:10px;">
+        <div class="section-card-wrap">
+          <div class="section-card-header">
             <span style="font-size:15px;">🇭🇰</span>
             <span style="font-size:14px; font-weight:700;">香港訂單</span>
             <span class="order-count-badge hk" id="countHK">載入中</span>
           </div>
-          <div id="loadingHK" class="loading-row">正在載入...</div>
-          <div class="table-wrap" id="wrapHK" style="display:none;">
-            <table>
-              <thead><tr>
-                <th>日期</th><th>訂單編號</th><th>客戶 / 自提點</th>
-                <th>活動 / 明細</th><th>港幣金額</th><th>狀態</th>
-              </tr></thead>
-              <tbody id="bodyHK"></tbody>
-            </table>
+          <div id="loadingHK" class="loading-row" style="padding:30px;">正在載入...</div>
+          <div id="wrapHK" style="display:none; padding:16px;">
+            <div class="order-cards" id="bodyHK"></div>
           </div>
         </div>
 
         <!-- TW 訂單 -->
-        <div class="card" style="padding: 0; overflow: hidden; margin-top: 24px;">
-          <div style="padding: 16px 20px 12px; border-bottom: 1px solid var(--border); display:flex; align-items:center; gap:10px;">
+        <div class="section-card-wrap">
+          <div class="section-card-header">
             <span style="font-size:15px;">🇹🇼</span>
             <span style="font-size:14px; font-weight:700;">台灣訂單</span>
             <span class="order-count-badge tw" id="countTW">載入中</span>
           </div>
-          <div id="loadingTW" class="loading-row">正在載入...</div>
-          <div class="table-wrap" id="wrapTW" style="display:none;">
-            <table>
-              <thead><tr>
-                <th>日期</th><th>訂單編號</th><th>客戶資訊</th>
-                <th>活動 / 明細</th><th>台幣金額</th><th>狀態</th>
-              </tr></thead>
-              <tbody id="bodyTW"></tbody>
-            </table>
+          <div id="loadingTW" class="loading-row" style="padding:30px;">正在載入...</div>
+          <div id="wrapTW" style="display:none; padding:16px;">
+            <div class="order-cards" id="bodyTW"></div>
           </div>
         </div>
       </div>
@@ -599,73 +658,133 @@ function renderOrders(orders, bodyId, region, cls) {
   const wrap = document.getElementById('wrap'+region);
   loading.style.display = 'none';
   wrap.style.display = 'block';
-  const tbody = document.getElementById(bodyId);
-  tbody.innerHTML = '';
+  const container = document.getElementById(bodyId);
+  container.innerHTML = '';
 
   if (orders.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" class="empty-row">沒有${region === 'TW' ? '台灣' : '香港'}訂單</td></tr>`;
+    container.innerHTML = `<div class="empty-row">沒有${region === 'TW' ? '台灣' : '香港'}訂單</div>`;
     return;
   }
 
+  const fallback = 'https://res.cloudinary.com/disr3dmsj/image/upload/v1776507968/uploads/2025-08/km1wihlxni7v7docvkb0.webp';
+  const currency = cls === 'tw' ? 'NT$' : 'HK$';
+
   orders.forEach(order => {
-    const tr = document.createElement('tr');
     const date = new Date(order.date || order.timestamp);
     const fmtDate = `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
     const hrs = (Date.now() - date.getTime()) / 3600000;
     const overdue = hrs > 72 && order.status !== '已付款' && order.status !== '已收款';
-    const dateHtml = overdue ? `<span class="overdue" title="超過72小時未付款">${fmtDate}</span>` : `<span>${fmtDate}</span>`;
-    const spanDate = overdue; // track for later
+    const isPaid = order.status === '已付款' || order.status === '已收款';
+    const eventName = order.event || '現場快閃代購';
+    const payMethod = order.payMethod || '未選';
 
-    // Customer cell
+    // 解析商品明細
+    const parsedItems = parseSummaryFrontend(order.summary || '');
+    let itemsHtml = '';
+    parsedItems.forEach(item => {
+      const subText = item.sub ? ` <span style="color:var(--muted);font-weight:400;">(${item.sub})</span>` : '';
+      itemsHtml += `
+        <div class="ocard-item">
+          <img class="ocard-item-img" src="${fallback}" />
+          <div class="ocard-item-info">
+            <div class="ocard-item-name">${item.name}${subText}</div>
+          </div>
+          <div class="ocard-item-price">× ${item.qty}</div>
+        </div>`;
+    });
+    if (!itemsHtml) {
+      itemsHtml = `<div style="font-size:12px;color:var(--muted);padding:4px 0;">${order.summary || '無明細'}</div>`;
+    }
+
+    // 客戶資訊
     let customerHtml = '';
     if (cls === 'hk') {
       const pCode = order.pickupCode || '';
       const pName = order.pickupName || '';
-      const pickup = pCode && pName ? `📍 [${pCode}] ${pName}` : (order.pickupAddress ? `📍 ${order.pickupAddress}` : '未選自提點');
-      customerHtml = `<div class="customer-name">${order.name}</div>
-        <div class="customer-meta">📱 ${order.phone}</div>
-        <div class="customer-meta">✉️ ${order.email}</div>
-        <div class="customer-meta" style="color:var(--accent); font-weight:500;">${pickup}</div>`;
+      const pickup = pCode && pName ? `📍 [${pCode}] ${pName}` : (order.pickupAddress ? `📍 ${order.pickupAddress}` : '');
+      customerHtml = `
+        <div class="ocard-customer-name">${order.name}</div>
+        <div class="ocard-customer-meta">📱 ${order.phone}&nbsp;&nbsp;✉️ ${order.email}</div>
+        ${pickup ? `<div class="ocard-pickup">${pickup}</div>` : ''}`;
     } else {
-      const phone = order.phone ? order.phone.toString() : '';
+      const phone = (order.phone || '').toString();
       const last3 = phone.length >= 3 ? phone.slice(-3) : phone;
-      customerHtml = `<div class="customer-name">${order.name}</div>
-        <div class="customer-meta">📱 ${phone} <span class="last3-chip">末3碼：${last3}</span></div>
-        <div class="customer-meta">✉️ ${order.email}</div>
-        <div class="customer-meta" style="color:var(--tw); font-weight:500;">📦 賣貨便到貨通知</div>`;
+      customerHtml = `
+        <div class="ocard-customer-name">${order.name}</div>
+        <div class="ocard-customer-meta">📱 ${phone} <span class="last3-chip">末3碼 ${last3}</span>&nbsp;&nbsp;✉️ ${order.email}</div>
+        <div class="ocard-pickup" style="color:var(--tw);">📦 賣貨便到貨通知</div>`;
     }
 
-    const currency = cls === 'tw' ? 'NT$' : 'HK$';
-    const amtColor = cls === 'tw' ? 'var(--tw)' : 'var(--hk)';
-    const payMethod = order.payMethod || '未選';
-    const eventName = order.event || '現場快閃代購';
-
-    // Status btn
-    const isPaid = order.status === '已付款' || order.status === '已收款';
-    const btnId = `btn-${order.id}`;
-    const dateId = `date-${order.id}`;
-
-    tr.innerHTML = `
-      <td id="${dateId}">${dateHtml}</td>
-      <td style="font-family:monospace; font-size:12px; font-weight:700;">${order.id}</td>
-      <td>${customerHtml}</td>
-      <td>
-        <div style="margin-bottom:4px;"><span class="event-badge">${eventName}</span><span class="region-pill ${cls}">${cls === 'hk' ? '🇭🇰 HK' : '🇹🇼 TW'}</span></div>
-        <div style="font-size:12px; color:#444; line-height:1.5;">${order.summary || '無明細'}</div>
-      </td>
-      <td>
-        <div style="font-weight:700; color:${amtColor};">${currency} ${order.amount || 0}</div>
-        <div style="font-size:11px; color:var(--muted); margin-top:2px;">(${payMethod})</div>
-      </td>
-      <td>
-        <button id="${btnId}" class="btn btn-sm ${isPaid ? 'btn-green' : 'btn-dark'}"
+    const card = document.createElement('div');
+    card.className = `ocard${overdue ? ' overdue-card' : ''}`;
+    card.innerHTML = `
+      <div class="ocard-top">
+        <span class="ocard-date${overdue ? ' overdue' : ''}">${fmtDate}${overdue ? ' ⚠️' : ''}</span>
+        <button id="btn-${order.id}" class="ocard-status-btn ${isPaid ? 'paid' : 'unpaid'}"
           ${isPaid ? 'disabled' : `onclick="confirmPayment('${order.id}')"`}>
           ${isPaid ? '✓ 已收款' : '確認收款 💰'}
         </button>
-      </td>`;
-    tbody.appendChild(tr);
+      </div>
+      <div class="ocard-body">
+        <div class="ocard-orderid">${order.id}</div>
+        <div class="ocard-customer">${customerHtml}</div>
+        <div class="ocard-event">
+          <span class="ocard-event-badge">${eventName}</span>
+          <span class="region-pill ${cls}">${cls === 'hk' ? '🇭🇰 HK' : '🇹🇼 TW'}</span>
+        </div>
+        <div class="ocard-items">${itemsHtml}</div>
+        <div class="ocard-total">
+          <span class="ocard-total-label">${payMethod}</span>
+          <span class="ocard-total-amount ${cls}">${currency} ${order.amount || 0}</span>
+        </div>
+      </div>`;
+    container.appendChild(card);
   });
 }
+
+// 前端輕量版 summary 解析
+function parseSummaryFrontend(text) {
+  if (!text) return [];
+  const items = [];
+  let current = '', depth = 0;
+  const parts = [];
+  for (const ch of text) {
+    if (ch === '(' || ch === '（') { depth++; current += ch; }
+    else if (ch === ')' || ch === '）') { depth--; current += ch; }
+    else if ((ch === ',' || ch === '，') && depth === 0) {
+      if (current.trim()) parts.push(current.trim());
+      current = '';
+    } else { current += ch; }
+  }
+  if (current.trim()) parts.push(current.trim());
+  parts.forEach(part => {
+    part = part.trim();
+    const lo = part.lastIndexOf('('), lc = part.lastIndexOf(')');
+    if (lo !== -1 && lc > lo) {
+      const inside = part.substring(lo+1, lc).trim();
+      const name = part.substring(0, lo).trim();
+      if (inside.match(/[,，]/)) {
+        inside.split(/[,，]/).forEach(sp => {
+          sp = sp.trim();
+          const m = sp.match(/[xX×]\s*(\d+)\s*$/);
+          const qty = m ? parseInt(m[1]) : 1;
+          const sub = m ? sp.replace(/[xX×]\s*\d+\s*$/, '').trim() : sp;
+          if (sub) items.push({ name, sub, qty });
+        });
+      } else {
+        const m = inside.match(/[xX×]\s*(\d+)\s*$/);
+        const qty = m ? parseInt(m[1]) : 1;
+        const sub = m ? inside.replace(/[xX×]\s*\d+\s*$/, '').trim() : inside.trim();
+        items.push({ name, sub, qty });
+      }
+    } else {
+      const m = part.match(/[xX×]\s*(\d+)\s*$/);
+      items.push({ name: m ? part.replace(/[xX×]\s*\d+\s*$/, '').trim() : part, sub: '', qty: m ? parseInt(m[1]) : 1 });
+    }
+  });
+  return items;
+}
+
 
 function confirmPayment(orderId) {
   if (!confirm(`確認收到訂單 ${orderId} 的款項？\n確認後會自動發送「已付款確認信」給客戶！`)) return;
