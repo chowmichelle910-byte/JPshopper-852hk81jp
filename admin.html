@@ -278,7 +278,17 @@
     .shipment-save-btn:hover { background: #333; }
     .shipment-save-btn.saved { background: var(--success); }
     .section-card-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 24px; }
-    .section-card-header { padding: 14px 20px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+    .section-card-header { padding: 14px 20px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .filter-btns { display: flex; gap: 6px; flex-wrap: wrap; margin-left: auto; }
+    .filter-btn {
+      padding: 4px 12px; border: 1.5px solid var(--border); background: var(--card);
+      border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer;
+      color: var(--muted); transition: all 0.15s;
+    }
+    .filter-btn:hover { border-color: var(--ink); color: var(--ink); }
+    .filter-btn.active-filter { background: var(--ink); color: #fff; border-color: var(--ink); }
+    .filter-btn.active-filter.hk { background: var(--hk); border-color: var(--hk); }
+    .filter-btn.active-filter.tw { background: var(--tw); border-color: var(--tw); }
 
     /* ── 訂貨區 ── */
     .order-summary-grid { display: flex; flex-direction: column; gap: 14px; }
@@ -431,6 +441,13 @@
             <span style="font-size:15px;">🇭🇰</span>
             <span style="font-size:14px; font-weight:700;">香港訂單</span>
             <span class="order-count-badge hk" id="countHK">載入中</span>
+            <div class="filter-btns">
+              <button class="filter-btn active-filter hk" onclick="setFilter('hk','all',this)">全部</button>
+              <button class="filter-btn" onclick="setFilter('hk','unpaid',this)">未付款</button>
+              <button class="filter-btn" onclick="setFilter('hk','paid',this)">已付款</button>
+              <button class="filter-btn" onclick="setFilter('hk','shipped',this)">已寄出</button>
+              <button class="filter-btn" onclick="setFilter('hk','collected',this)">已取貨</button>
+            </div>
           </div>
           <div id="loadingHK" class="loading-row" style="padding:30px;">正在載入...</div>
           <div id="wrapHK" style="display:none; padding:16px;">
@@ -444,6 +461,13 @@
             <span style="font-size:15px;">🇹🇼</span>
             <span style="font-size:14px; font-weight:700;">台灣訂單</span>
             <span class="order-count-badge tw" id="countTW">載入中</span>
+            <div class="filter-btns">
+              <button class="filter-btn active-filter tw" onclick="setFilter('tw','all',this)">全部</button>
+              <button class="filter-btn" onclick="setFilter('tw','unpaid',this)">未付款</button>
+              <button class="filter-btn" onclick="setFilter('tw','paid',this)">已付款</button>
+              <button class="filter-btn" onclick="setFilter('tw','shipped',this)">已寄出</button>
+              <button class="filter-btn" onclick="setFilter('tw','collected',this)">已取貨</button>
+            </div>
           </div>
           <div id="loadingTW" class="loading-row" style="padding:30px;">正在載入...</div>
           <div id="wrapTW" style="display:none; padding:16px;">
@@ -573,6 +597,9 @@ const EXCLUDED = ["Blank","易寄取地址","訂單紀錄","收單截止時間",
 let allSheets = [];
 let stockData = [], stockChanges = {}, currentStockSheet = "";
 let currentPage = 'orders';
+// 篩選狀態
+let allHKOrders = [], allTWOrders = [];
+let filterHK = 'all', filterTW = 'all';
 
 // ── Lock ──
 function unlock() {
@@ -661,8 +688,10 @@ function fetchOrders() {
       document.getElementById('countTW').innerText = tw.length + ' 筆';
       document.getElementById('badgeTotal').innerText = orders.length;
 
-      renderOrders(hk, 'bodyHK', 'HK', 'hk');
-      renderOrders(tw, 'bodyTW', 'TW', 'tw');
+      allHKOrders = hk;
+      allTWOrders = tw;
+      applyFilter('hk');
+      applyFilter('tw');
     })
     .catch(err => {
       ['HK','TW'].forEach(r => {
@@ -1316,6 +1345,62 @@ function addNewProduct() {
 }
 
 function pad(n) { return n < 10 ? '0' + n : n; }
+
+// ── 篩選邏輯 ──
+function setFilter(region, filter, btn) {
+  if (region === 'hk') filterHK = filter;
+  else filterTW = filter;
+
+  // 更新按鈕樣式
+  const activeClass = region === 'hk' ? 'active-filter hk' : 'active-filter tw';
+  btn.closest('.filter-btns').querySelectorAll('.filter-btn').forEach(b => {
+    b.className = 'filter-btn';
+  });
+  btn.className = 'filter-btn ' + activeClass;
+
+  applyFilter(region);
+}
+
+function applyFilter(region) {
+  const isHK = region === 'hk';
+  const allOrders = isHK ? allHKOrders : allTWOrders;
+  const filter = isHK ? filterHK : filterTW;
+
+  // 篩選
+  let filtered = allOrders.filter(o => {
+    const s = (o.status || '').trim();
+    if (filter === 'all')      return true;
+    if (filter === 'unpaid')   return s === '待處理';
+    if (filter === 'paid')     return s === '已收款' || s === '已付款';
+    if (filter === 'shipped')  return s === '已寄出';
+    if (filter === 'collected')return s === '已取貨';
+    return true;
+  });
+
+  // 排序
+  if (filter === 'unpaid') {
+    // 未付款：下單時間新→舊（預設已是 reverse，不動）
+    // allOrders 已經是 reverse 過的，不需額外排序
+  } else if (filter === 'paid') {
+    // 已付款：付款時間舊→新（付款時間早的在下面，最新的在最上面）
+    // 改為：付款時間新的在最上面（最近付款的最前）
+    filtered.sort((a, b) => {
+      const ta = a.paymentTime ? new Date(a.paymentTime).getTime() : 0;
+      const tb = b.paymentTime ? new Date(b.paymentTime).getTime() : 0;
+      return tb - ta; // 新→舊
+    });
+  }
+  // 其他篩選維持原本下單時間排序
+
+  // 更新筆數顯示
+  const region_upper = region.toUpperCase();
+  const countEl = document.getElementById('count' + region_upper);
+  const total = allOrders.length;
+  const showing = filtered.length;
+  countEl.innerText = filter === 'all' ? `${total} 筆` : `${showing} / ${total} 筆`;
+
+  renderOrders(filtered, 'body' + region_upper, region_upper, region);
+}
 
 function saveShipmentRef(orderId, btn) {
   const input = document.getElementById('ship-' + orderId);
