@@ -335,12 +335,21 @@ function shopApp() {
       return this.orderedQty[key] || 0;
     },
     isSoldOut(product, sub) {
-      if (product.stockLimit === null || product.stockLimit === undefined) return false;
-      return this.soldOutQty(product.name, sub) >= product.stockLimit;
+      const ssl = product.subStockLimit;
+      if (!ssl) return false; // null = 無限購
+      // 優先查款式名稱，找不到則查 __all__（舊格式相容）
+      const limit = ssl.hasOwnProperty(sub) ? ssl[sub]
+                  : ssl.hasOwnProperty('__all__') ? ssl['__all__'] : null;
+      if (limit === null || limit === undefined) return false;
+      return this.soldOutQty(product.name, sub) >= limit;
     },
     remaining(product, sub) {
-      if (product.stockLimit === null || product.stockLimit === undefined) return null;
-      return Math.max(0, product.stockLimit - this.soldOutQty(product.name, sub));
+      const ssl = product.subStockLimit;
+      if (!ssl) return null;
+      const limit = ssl.hasOwnProperty(sub) ? ssl[sub]
+                  : ssl.hasOwnProperty('__all__') ? ssl['__all__'] : null;
+      if (limit === null || limit === undefined) return null;
+      return Math.max(0, limit - this.soldOutQty(product.name, sub));
     },
 
     scrollToRecipient() { document.getElementById('recipient-section')?.scrollIntoView({behavior:'smooth'}); },
@@ -401,7 +410,7 @@ function shopApp() {
 
       try {
         await fetch(GAS_API_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-        alert(`🎉 訂單送出成功！\n\n商品小計：NT$${this.subtotal}\n（運費將於出貨時另行通知）\n\n確認信已寄出，如遇缺貨, 則缺貨商品全額退款。謝謝您的支持！`);
+        alert(`🎉 訂單送出成功！\n\n商品小計：NT$${this.subtotal}\n（運費將於出貨時另行通知）\n\n確認信已寄出，謝謝您的支持！`);
         this.cart={}; this.form.name=''; this.form.phone=''; this.form.email='';
       } catch(e) { alert('送出失敗，請確認網路連線。'); }
       finally { this.submitting=false; }
