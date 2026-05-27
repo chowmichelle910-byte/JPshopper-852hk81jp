@@ -1009,7 +1009,7 @@ function renderOrderSummary() {
       }
 
       row.innerHTML = `
-        <span class="osrow-sub">${sub.sub || '（無款式）'}</span>
+        <span class="osrow-sub">${sub.sub || ''}</span>
         <span class="osrow-qty">${sub.qty}</span>
         <span class="osrow-yen">¥ ${(sub.totalYen || 0).toLocaleString()}</span>
         <span class="osrow-bought">
