@@ -258,6 +258,25 @@
     .ocard-total-amount { font-size: 16px; font-weight: 800; }
     .ocard-total-amount.hk { color: var(--hk); }
     .ocard-total-amount.tw { color: var(--tw); }
+    .shipment-row {
+      display: flex; align-items: center; gap: 8px;
+      margin-top: 10px; padding-top: 10px;
+      border-top: 1px dashed var(--border);
+    }
+    .shipment-input {
+      flex: 1; padding: 6px 10px; border: 1px solid var(--border);
+      border-radius: 6px; font-size: 12px; background: #fafafa;
+      outline: none; transition: border-color 0.2s;
+      font-family: monospace;
+    }
+    .shipment-input:focus { border-color: var(--ink); background: #fff; }
+    .shipment-save-btn {
+      padding: 6px 12px; background: var(--ink); color: #fff;
+      border: none; border-radius: 6px; font-size: 11px; font-weight: 700;
+      cursor: pointer; white-space: nowrap; transition: background 0.15s;
+    }
+    .shipment-save-btn:hover { background: #333; }
+    .shipment-save-btn.saved { background: var(--success); }
     .section-card-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 24px; }
     .section-card-header { padding: 14px 20px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
 
@@ -754,6 +773,13 @@ function renderOrders(orders, bodyId, region, cls) {
         </div>
         ${order.paymentTime ? '<div style="font-size:11px;color:#10b981;margin-top:8px;padding-top:8px;border-top:1px dashed #e5e7eb;">Paid: ' + formatPaymentTime(order.paymentTime) + '</div>' : ''}
         ${order.remark ? '<div style="font-size:11px;color:#6b7280;margin-top:4px;">Note: ' + order.remark + '</div>' : ''}
+         <div class="shipment-row">
+           <span style="font-size:11px;color:var(--muted);white-space:nowrap;">${cls === 'hk' ? '運單號碼' : '賣貨便網址'}</span>
+           <input class="shipment-input" id="ship-${order.id}"
+                  value="${order.shipmentRef || ''}"
+                  placeholder="${cls === 'hk' ? '例如：SF1234567890' : '例如：https://buy.ruten.com.tw/...'}" />
+           <button class="shipment-save-btn" onclick="saveShipmentRef('${order.id}', this)">儲存</button>
+         </div>
       </div>`;
     container.appendChild(card);
   });
@@ -1290,6 +1316,33 @@ function addNewProduct() {
 }
 
 function pad(n) { return n < 10 ? '0' + n : n; }
+
+function saveShipmentRef(orderId, btn) {
+  const input = document.getElementById('ship-' + orderId);
+  if (!input) return;
+  const val = input.value.trim();
+  const origText = btn.innerText;
+  btn.innerText = '儲存中...';
+  btn.disabled = true;
+  fetch(GAS, {
+    method: 'POST', mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'updateShipmentRef', orderId, shipmentRef: val })
+  }).then(() => {
+    btn.innerText = '✓ 已儲存';
+    btn.className = 'shipment-save-btn saved';
+    setTimeout(() => {
+      btn.innerText = origText;
+      btn.className = 'shipment-save-btn';
+      btn.disabled = false;
+    }, 2000);
+  }).catch(err => {
+    alert('儲存失敗，請重試。');
+    btn.innerText = origText;
+    btn.disabled = false;
+    console.error(err);
+  });
+}
 
 function formatPaymentTime(val) {
   if (!val) return '';
