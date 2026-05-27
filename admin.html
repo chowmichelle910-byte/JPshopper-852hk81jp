@@ -408,7 +408,7 @@
             <button class="os-select-all-btn" onclick="clearAllBought()">✕ 全部清除</button>
           </div>
           <div class="os-total-bar">
-            <span>📊 已付款訂單總日幣金額</span>
+            <span>📊 尚需購買日幣總額</span>
             <strong id="osTotalYen">¥ —</strong>
           </div>
           <div class="order-summary-grid" id="orderSummaryGrid">
@@ -958,9 +958,12 @@ function renderOrderSummary() {
       if (sub.photo && sub.photo.startsWith('http')) { imgSrc = sub.photo; break; }
     }
 
-    // 計算此商品總日幣
+    // 計算此商品「還需購買」的日幣（排除已完成的款式）
+    const prodRemainingYen = product.subs
+      .filter(sub => !sub.isComplete || purchaseChanges.hasOwnProperty(product.name + '|' + sub.sub))
+      .reduce((s, sub) => s + (sub.yenEach || 0) * sub.remaining, 0);
     const prodTotalYen = product.subs.reduce((s, sub) => s + (sub.totalYen || 0), 0);
-    grandTotalYen += prodTotalYen;
+    grandTotalYen += prodRemainingYen;
 
     // Header
     const header = document.createElement('div');
@@ -969,7 +972,10 @@ function renderOrderSummary() {
       <img class="oscard-img" src="${imgSrc}" onerror="this.src='${fallback}'" />
       <div>
         <div class="oscard-name">${product.name}</div>
-        <div style="font-size:11px; color:#aaa; margin-top:3px;">¥ ${prodTotalYen.toLocaleString()}</div>
+        <div style="font-size:11px; color:#aaa; margin-top:3px;">
+          還需 ¥ ${prodRemainingYen.toLocaleString()}
+          ${prodTotalYen !== prodRemainingYen ? `<span style="color:#ddd;">/ 總 ¥ ${prodTotalYen.toLocaleString()}</span>` : ''}
+        </div>
       </div>`;
     card.appendChild(header);
 
@@ -978,21 +984,35 @@ function renderOrderSummary() {
     headerRow.className = 'osrow header-row';
     headerRow.innerHTML = `
       <span>款式</span>
-      <span style="text-align:center;">需購買</span>
-      <span style="text-align:right;">日幣總額</span>
-      <span style="text-align:center;">已購買</span>
+      <span style="text-align:center;">還需買</span>
+      <span style="text-align:right;">日幣</span>
+      <span style="text-align:center;">已買</span>
       <span style="text-align:center;">✓</span>`;
     card.appendChild(headerRow);
 
-    // 款式行
+    // 款式行：只顯示尚未完成的款式（remaining > 0）
+    let hasVisibleSubs = false;
     product.subs.forEach(sub => {
       const key = product.name + '|' + sub.sub;
-      const savedBought = purchaseChanges.hasOwnProperty(key) ? purchaseChanges[key] : sub.purchased;
-      // ── 預設值：已有儲存值就用儲存值，否則預設為需購買數量 ──
-      const defaultBought = savedBought > 0 ? savedBought : sub.qty;
-      const isDone = defaultBought >= sub.qty && sub.qty > 0;
 
-      // 初始化 purchaseChanges（讓儲存時能帶上預設值）
+      // 已完成（remaining === 0）且沒有本次修改 → 跳過不顯示
+      if (sub.isComplete && !purchaseChanges.hasOwnProperty(key)) return;
+
+      hasVisibleSubs = true;
+
+      // 預設已購買數量：有修改用修改值，否則用已購買數量
+      const currentBought = purchaseChanges.hasOwnProperty(key)
+                            ? purchaseChanges[key]
+                            : sub.purchased;
+
+      // 下拉預設為「還需購買數量」（remaining），即 qty - purchased
+      const defaultBought = purchaseChanges.hasOwnProperty(key)
+                            ? currentBought
+                            : sub.remaining;  // ← 預設為還需購買
+
+      const isDone = currentBought >= sub.qty && sub.qty > 0;
+
+      // 初始化 purchaseChanges
       if (!purchaseChanges.hasOwnProperty(key)) {
         purchaseChanges[key] = defaultBought;
       }
@@ -1001,17 +1021,21 @@ function renderOrderSummary() {
       row.className = 'osrow';
       row.dataset.key = key;
 
-      // 生成下拉選項（0 到 max(需購買, 已購買, 10)）
-      const maxOpt = Math.max(sub.qty, defaultBought, 10);
+      // 下拉：0 到 max(需購買, 已購買+還需買, 10)
+      const maxOpt = Math.max(sub.qty, currentBought + sub.remaining, 10);
       let options = `<option value="0"${defaultBought === 0 ? ' selected' : ''}>0</option>`;
       for (let i = 1; i <= maxOpt; i++) {
         options += `<option value="${i}"${defaultBought === i ? ' selected' : ''}>${i}</option>`;
       }
 
+      // 顯示「還需購買」而非「總需購買」，更直觀
+      const displayQty = sub.remaining;
+      const displayYen = sub.yenEach ? (sub.yenEach * displayQty).toLocaleString() : (sub.totalYen || 0).toLocaleString();
+
       row.innerHTML = `
         <span class="osrow-sub">${sub.sub || ''}</span>
-        <span class="osrow-qty">${sub.qty}</span>
-        <span class="osrow-yen">¥ ${(sub.totalYen || 0).toLocaleString()}</span>
+        <span class="osrow-qty" title="總需購買: ${sub.qty}, 已購買: ${sub.purchased}">${displayQty}</span>
+        <span class="osrow-yen">¥ ${displayYen}</span>
         <span class="osrow-bought">
           <select class="bought-select${isDone ? ' done' : ''}" data-key="${key}" data-max="${sub.qty}"
                   onchange="onBoughtChange(this)">
@@ -1025,6 +1049,9 @@ function renderOrderSummary() {
         </span>`;
       card.appendChild(row);
     });
+
+    // 如果此商品所有款式都已完成，整張卡不加入 grid
+    if (!hasVisibleSubs) return;
 
     grid.appendChild(card);
   });
