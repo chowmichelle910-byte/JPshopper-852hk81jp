@@ -158,22 +158,33 @@
     }
     .event-tab-btn:hover { border-color: var(--ink); color: var(--ink); }
     .event-tab-btn.active { background: var(--ink); color: #fff; border-color: var(--ink); }
-    .stock-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+    .stock-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
     .stock-item {
       background: var(--card); border: 1.5px solid var(--border); border-radius: 10px;
-      padding: 12px; display: flex; align-items: flex-start; gap: 10px;
-      transition: border-color 0.2s, background 0.2s;
+      overflow: hidden; transition: border-color 0.2s;
     }
-    .stock-item.modified { border-color: var(--warning); background: #fffbeb; }
-    .stock-item.soldout { border-color: #fca5a5; background: #fff5f5; }
+    .stock-item.has-soldout { border-color: #fca5a5; }
+    .stock-item.all-modified { border-color: var(--warning); }
+    .stock-item-header { display: flex; align-items: flex-start; gap: 10px; padding: 12px 12px 10px; }
     .stock-item-img { width: 48px; height: 48px; object-fit: cover; border-radius: 7px; border: 1px solid var(--border); flex-shrink: 0; }
     .stock-item-info { flex: 1; min-width: 0; }
     .stock-item-name { font-size: 12px; font-weight: 700; color: #222; line-height: 1.4; word-break: break-word; }
-    .stock-item-subs { font-size: 11px; color: #888; line-height: 1.4; margin-top: 3px; word-break: break-word; }
+    /* 款式列表 */
+    .stock-subs-list { border-top: 1px solid var(--border); }
+    .stock-sub-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 12px; border-bottom: 1px solid #f5f5f5;
+      transition: background 0.15s;
+    }
+    .stock-sub-row:last-child { border-bottom: none; }
+    .stock-sub-row.soldout { background: #fff5f5; }
+    .stock-sub-row.modified { background: #fffbeb; }
+    .stock-sub-name { font-size: 12px; color: #333; flex: 1; }
+    .stock-sub-status { font-size: 10px; color: #bbb; margin-right: 8px; }
     .stock-soldout-btn {
-      margin-top: 8px; padding: 4px 10px; font-size: 10px; font-weight: 700;
+      padding: 4px 10px; font-size: 10px; font-weight: 700;
       border: none; border-radius: 5px; cursor: pointer; transition: all 0.15s;
-      background: #fee2e2; color: #dc2626;
+      background: #fee2e2; color: #dc2626; white-space: nowrap;
     }
     .stock-soldout-btn.active { background: #dc2626; color: #fff; }
     .stock-soldout-btn:hover { opacity: 0.85; }
@@ -616,36 +627,94 @@ function renderStockGrid() {
   const fallback = 'https://res.cloudinary.com/disr3dmsj/image/upload/v1776507968/uploads/2025-08/km1wihlxni7v7docvkb0.webp';
 
   stockData.forEach(p => {
-    const cur = stockChanges.hasOwnProperty(p.row) ? stockChanges[p.row] : p.stockLimit;
-    const isSoldOut = cur === 0;
-    const isModified = stockChanges.hasOwnProperty(p.row);
     const imgSrc = (p.photo && p.photo.startsWith('http')) ? p.photo : fallback;
+    // 取得目前的 subStockLimit（可能已有修改）
+    const curSsl = stockChanges.hasOwnProperty(p.row)
+                   ? stockChanges[p.row]
+                   : (p.subStockLimit || null);
+    const subs = p.subsArray && p.subsArray.length ? p.subsArray : (p.subs ? p.subs.split(' / ').map(s=>s.trim()) : []);
+    const hasSoldOut = subs.some(sub => getSubLimit(curSsl, sub) === 0);
+    const hasModified = stockChanges.hasOwnProperty(p.row);
 
     const div = document.createElement('div');
-    div.className = `stock-item${isSoldOut ? ' soldout' : ''}${isModified ? ' modified' : ''}`;
+    div.className = `stock-item${hasSoldOut ? ' has-soldout' : ''}${hasModified ? ' all-modified' : ''}`;
     div.dataset.row = p.row;
+
+    // 建立款式列表 HTML
+    let subsHtml = '';
+    subs.forEach(sub => {
+      const limit = getSubLimit(curSsl, sub);
+      const isSoldOut = limit === 0;
+      const rowClass = isSoldOut ? ' soldout' : (hasModified ? ' modified' : '');
+      const statusText = limit === null ? '無限購' : (isSoldOut ? '缺貨' : `限購 ${limit}`);
+      subsHtml += `
+        <div class="stock-sub-row${rowClass}" data-row="${p.row}" data-sub="${sub}">
+          <span class="stock-sub-name">${sub}</span>
+          <span class="stock-sub-status">${statusText}</span>
+          <button class="stock-soldout-btn${isSoldOut ? ' active' : ''}"
+                  onclick="toggleSubSoldOut(${p.row}, '${sub.replace(/'/g, "\'")}', this)">
+            ${isSoldOut ? '✕ 缺貨中' : '缺貨'}
+          </button>
+        </div>`;
+    });
+
     div.innerHTML = `
-      <img class="stock-item-img" src="${imgSrc}" onerror="this.src='${fallback}'" />
-      <div class="stock-item-info">
-        <div class="stock-item-name">${p.name}</div>
-        <div class="stock-item-subs">${p.subs || '—'}</div>
-        <button class="stock-soldout-btn${isSoldOut ? ' active' : ''}" onclick="toggleSoldOut(${p.row}, this)">
-          ${isSoldOut ? '✕ 缺貨中' : '缺貨'}
-        </button>
-      </div>`;
+      <div class="stock-item-header">
+        <img class="stock-item-img" src="${imgSrc}" onerror="this.src='${fallback}'" />
+        <div class="stock-item-info">
+          <div class="stock-item-name">${p.name}</div>
+        </div>
+      </div>
+      <div class="stock-subs-list">${subsHtml}</div>`;
     grid.appendChild(div);
   });
 }
 
-function toggleSoldOut(row, btn) {
-  const cur = stockChanges.hasOwnProperty(row) ? stockChanges[row] : stockData.find(p => p.row === row).stockLimit;
-  stockChanges[row] = (cur === 0) ? null : 0;
-  const div = document.querySelector(`.stock-item[data-row="${row}"]`);
-  const isSoldOut = stockChanges[row] === 0;
-  const isModified = true;
-  div.className = `stock-item${isSoldOut ? ' soldout' : ''}${isModified ? ' modified' : ''}`;
+// 取得某款式的庫存上限
+function getSubLimit(ssl, sub) {
+  if (!ssl) return null;
+  if (ssl.hasOwnProperty(sub)) return ssl[sub];
+  if (ssl.hasOwnProperty('__all__')) return ssl['__all__'];
+  return null;
+}
+
+// 切換單一款式缺貨狀態
+function toggleSubSoldOut(row, sub, btn) {
+  const p = stockData.find(p => p.row === row);
+  // 取目前整件商品的 subStockLimit（深複製避免直接改原始資料）
+  let curSsl = stockChanges.hasOwnProperty(row)
+               ? Object.assign({}, stockChanges[row])
+               : (p.subStockLimit ? Object.assign({}, p.subStockLimit) : {});
+
+  const curLimit = getSubLimit(curSsl, sub);
+  if (curLimit === 0) {
+    // 取消缺貨 → 移除此款式的限制（null = 無限購）
+    delete curSsl[sub];
+    if (Object.keys(curSsl).length === 0) curSsl = null;
+  } else {
+    // 設為缺貨 → 0
+    curSsl[sub] = 0;
+  }
+  stockChanges[row] = curSsl;
+
+  // 更新此款式列的樣式
+  const subRow = document.querySelector(`.stock-sub-row[data-row="${row}"][data-sub="${sub}"]`);
+  const isSoldOut = curSsl && curSsl[sub] === 0;
+  if (subRow) {
+    subRow.className = `stock-sub-row${isSoldOut ? ' soldout' : ' modified'}`;
+    const statusEl = subRow.querySelector('.stock-sub-status');
+    if (statusEl) statusEl.innerText = isSoldOut ? '缺貨' : '無限購';
+  }
   btn.className = `stock-soldout-btn${isSoldOut ? ' active' : ''}`;
   btn.innerText = isSoldOut ? '✕ 缺貨中' : '缺貨';
+
+  // 更新商品卡樣式
+  const newSsl = stockChanges[row];
+  const subs = p.subsArray || [];
+  const hasSoldOut = subs.some(s => getSubLimit(newSsl, s) === 0);
+  const card = document.querySelector(`.stock-item[data-row="${row}"]`);
+  if (card) card.className = `stock-item${hasSoldOut ? ' has-soldout' : ''} all-modified`;
+
   updateFloatSave();
 }
 
@@ -663,13 +732,13 @@ function saveStockChanges() {
   const btn = document.querySelector('.float-btn');
   btn.innerText = '儲存中...';
   btn.disabled = true;
-  const updates = Object.keys(stockChanges).map(row => ({ row: parseInt(row), stockLimit: stockChanges[row] }));
+  const updates = Object.keys(stockChanges).map(row => ({ row: parseInt(row), subStockLimit: stockChanges[row] }));
   fetch(GAS, {
     method: 'POST', mode: 'no-cors',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action: 'batchUpdateStockLimit', sheetName: currentStockSheet, updates })
   }).then(() => {
-    updates.forEach(u => { const p = stockData.find(p => p.row === u.row); if (p) p.stockLimit = u.stockLimit; });
+    updates.forEach(u => { const p = stockData.find(p => p.row === u.row); if (p) p.subStockLimit = u.subStockLimit; });
     stockChanges = {};
     renderStockGrid();
     updateFloatSave();
