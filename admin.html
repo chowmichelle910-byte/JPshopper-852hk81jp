@@ -190,6 +190,65 @@
     .stock-soldout-btn:hover { opacity: 0.85; }
     .stock-empty { color: #bbb; font-size: 13px; text-align: center; padding: 40px; grid-column: 1/-1; }
 
+    /* ── 訂貨區 ── */
+    .order-summary-grid { display: flex; flex-direction: column; gap: 14px; }
+    .oscard {
+      background: var(--card); border: 1.5px solid var(--border);
+      border-radius: 10px; overflow: hidden;
+    }
+    .oscard-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 14px; background: #fafafa;
+      border-bottom: 1px solid var(--border);
+    }
+    .oscard-img { width: 52px; height: 52px; object-fit: cover; border-radius: 7px; border: 1px solid var(--border); flex-shrink: 0; }
+    .oscard-name { font-size: 13px; font-weight: 700; color: #111; }
+    .oscard-body { }
+    .osrow {
+      display: grid;
+      grid-template-columns: 1fr 80px 90px 90px 100px;
+      align-items: center; gap: 8px;
+      padding: 9px 14px;
+      border-bottom: 1px solid #f5f5f5;
+      font-size: 12px;
+    }
+    .osrow:last-child { border-bottom: none; }
+    .osrow.header-row {
+      background: #f9fafb; font-size: 11px; font-weight: 600;
+      color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .osrow-sub { color: #333; font-weight: 500; }
+    .osrow-qty { font-weight: 700; color: var(--ink); text-align: center; }
+    .osrow-yen { color: #b45309; font-weight: 600; text-align: right; }
+    .osrow-bought { text-align: center; }
+    .osrow-check { text-align: center; }
+    .bought-select {
+      width: 80px; padding: 4px 6px; border: 1px solid var(--border);
+      border-radius: 5px; font-size: 12px; text-align: center;
+      background: white; outline: none; cursor: pointer;
+    }
+    .bought-select:focus { border-color: var(--ink); }
+    .bought-select.done { background: #f0fdf4; border-color: #bbf7d0; color: #166534; font-weight: 600; }
+    .os-select-all-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 0; margin-bottom: 14px;
+    }
+    .os-select-all-btn {
+      padding: 6px 14px; font-size: 12px; font-weight: 600;
+      border: 1.5px solid var(--border); background: var(--card);
+      border-radius: 6px; cursor: pointer; color: var(--muted); transition: all 0.15s;
+    }
+    .os-select-all-btn:hover { border-color: var(--ink); color: var(--ink); }
+    .os-total-bar {
+      background: #fffbeb; border: 1px solid #fde68a;
+      border-radius: 8px; padding: 12px 16px;
+      font-size: 13px; color: #92400e;
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 16px;
+    }
+    .os-total-bar strong { font-size: 15px; color: #78350f; }
+    .os-empty { color: #bbb; font-size: 13px; text-align: center; padding: 40px; }
+
     /* ── Float save ── */
     .float-save { position: fixed; bottom: 28px; right: 28px; z-index: 200; display: none; flex-direction: column; align-items: flex-end; gap: 8px; }
     .float-save.visible { display: flex; }
@@ -241,6 +300,9 @@
       <div class="nav-section-label">商品管理</div>
       <div class="nav-item" onclick="goto('stock'); closeSidebar();" id="nav-stock">
         <span class="nav-icon">📦</span> 庫存管理
+      </div>
+      <div class="nav-item" onclick="goto('purchase'); closeSidebar();" id="nav-purchase">
+        <span class="nav-icon">🛒</span> 訂貨區
       </div>
 
       <div class="nav-section-label">活動管理</div>
@@ -330,6 +392,31 @@
         </div>
       </div>
 
+      <!-- ════ PAGE: 訂貨區 ════ -->
+      <div class="page" id="page-purchase">
+        <div class="card">
+          <div class="card-title"><span>🛒</span> 選擇活動</div>
+          <div class="event-tabs" id="eventTabsPurchase">
+            <div style="color:#bbb; font-size:13px;">載入中...</div>
+          </div>
+        </div>
+
+        <div id="purchaseContent" style="display:none;">
+          <!-- 全選 + 總日幣 -->
+          <div class="os-select-all-row">
+            <button class="os-select-all-btn" onclick="selectAllBought()">✅ 全部標記為已購買</button>
+            <button class="os-select-all-btn" onclick="clearAllBought()">✕ 全部清除</button>
+          </div>
+          <div class="os-total-bar">
+            <span>📊 已付款訂單總日幣金額</span>
+            <strong id="osTotalYen">¥ —</strong>
+          </div>
+          <div class="order-summary-grid" id="orderSummaryGrid">
+            <div class="os-empty">請先選擇活動</div>
+          </div>
+        </div>
+      </div>
+
       <!-- ════ PAGE: 建立活動 ════ -->
       <div class="page" id="page-events">
         <div class="card" style="max-width: 480px;">
@@ -397,12 +484,12 @@
 <!-- Float Save -->
 <div class="float-save" id="floatSave">
   <div class="float-badge" id="floatBadge">已修改 0 項</div>
-  <button class="float-btn" onclick="saveStockChanges()">💾 確認儲存庫存</button>
+  <button class="float-btn" onclick="saveStockChanges()">💾 確認儲存</button>
 </div>
 
 <script>
 const GAS = "https://script.google.com/macros/s/AKfycbzgsFv9_AjExH0VCh1m6DX18qTmXMKwO0xiBGQfYqvO2Q6nb5ZNeXRbsdRsbGVcFidIQw/exec";
-const EXCLUDED = ["Blank","易寄取地址","訂單紀錄","收單截止時間"];
+const EXCLUDED = ["Blank","易寄取地址","訂單紀錄","收單截止時間","購貨紀錄"];
 
 // ── State ──
 let allSheets = [];
@@ -439,11 +526,12 @@ async function loadSheetList() {
     allSheets = (await res.json()).filter(n => EXCLUDED.indexOf(n) === -1);
     renderEventTabs('eventTabsStock', 'stock');
     renderEventTabs('eventTabsProduct', 'product');
+    renderEventTabs('eventTabsPurchase', 'purchase');
   } catch(e) { console.error(e); }
 }
 
 // ── Navigation ──
-const pageTitles = { orders:'所有訂單', stock:'庫存管理', events:'建立活動', products:'上架商品' };
+const pageTitles = { orders:'所有訂單', stock:'庫存管理', purchase:'訂貨區', events:'建立活動', products:'上架商品' };
 function goto(page) {
   currentPage = page;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -469,6 +557,7 @@ function renderEventTabs(containerId, mode) {
       btn.classList.add('active');
       if (mode === 'stock') loadProducts(name);
       if (mode === 'product') document.getElementById('prodTargetSheet').value = name;
+      if (mode === 'purchase') loadOrderSummary(name);
     };
     wrap.appendChild(btn);
   });
@@ -523,8 +612,8 @@ function renderOrders(orders, bodyId, region, cls) {
     const date = new Date(order.date || order.timestamp);
     const fmtDate = `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
     const hrs = (Date.now() - date.getTime()) / 3600000;
-    const overdue = hrs > 24 && order.status !== '已付款' && order.status !== '已收款';
-    const dateHtml = overdue ? `<span class="overdue" title="超過24小時未付款">${fmtDate}</span>` : `<span>${fmtDate}</span>`;
+    const overdue = hrs > 72 && order.status !== '已付款' && order.status !== '已收款';
+    const dateHtml = overdue ? `<span class="overdue" title="超過72小時未付款">${fmtDate}</span>` : `<span>${fmtDate}</span>`;
     const spanDate = overdue; // track for later
 
     // Customer cell
@@ -743,6 +832,9 @@ function updateFloatSave() {
 }
 
 function saveStockChanges() {
+  // 根據當前頁面決定儲存庫存還是訂貨區
+  if (currentPage === 'purchase') { savePurchasedChanges(); return; }
+
   const count = Object.keys(stockChanges).length;
   if (!count || !currentStockSheet) return;
   if (!confirm(`確定要儲存 ${count} 項庫存變更到「${currentStockSheet}」嗎？`)) return;
@@ -759,15 +851,221 @@ function saveStockChanges() {
     stockChanges = {};
     renderStockGrid();
     updateFloatSave();
-    btn.innerText = '💾 確認儲存庫存';
+    btn.innerText = '💾 確認儲存';
     btn.disabled = false;
     alert(`✅ 已成功儲存 ${count} 項庫存設定！`);
   }).catch(err => {
     alert('❌ 儲存失敗，請重試。');
-    btn.innerText = '💾 確認儲存庫存';
+    btn.innerText = '💾 確認儲存';
     btn.disabled = false;
     console.error(err);
   });
+}
+
+function savePurchasedChanges() {
+  const count = Object.keys(purchaseChanges).length;
+  if (!count || !currentPurchaseEvent) return;
+  if (!confirm(`確定要儲存「${currentPurchaseEvent}」的已購買數量（${count} 項）到購貨紀錄嗎？`)) return;
+
+  const btn = document.querySelector('.float-btn');
+  btn.innerText = '儲存中...';
+  btn.disabled = true;
+
+  // 整理所有商品款式的最新數量
+  const items = [];
+  purchaseData.forEach(product => {
+    product.subs.forEach(sub => {
+      const key = product.name + '|' + sub.sub;
+      const purchased = purchaseChanges.hasOwnProperty(key) ? purchaseChanges[key] : sub.purchased;
+      items.push({ name: product.name, sub: sub.sub, qty: sub.qty, purchased });
+    });
+  });
+
+  fetch(GAS, {
+    method: 'POST', mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'savePurchased', eventName: currentPurchaseEvent, items })
+  }).then(() => {
+    // 更新本地 purchaseData
+    purchaseData.forEach(product => {
+      product.subs.forEach(sub => {
+        const key = product.name + '|' + sub.sub;
+        if (purchaseChanges.hasOwnProperty(key)) sub.purchased = purchaseChanges[key];
+      });
+    });
+    purchaseChanges = {};
+    updatePurchaseFloatSave();
+    btn.innerText = '💾 確認儲存';
+    btn.disabled = false;
+    alert(`✅ 已成功儲存 ${items.length} 項購貨紀錄！`);
+  }).catch(err => {
+    alert('❌ 儲存失敗，請重試。');
+    btn.innerText = '💾 確認儲存';
+    btn.disabled = false;
+    console.error(err);
+  });
+}
+
+// ── 訂貨區 ──
+let purchaseData = [];      // 當前載入的訂貨摘要
+let purchaseChanges = {};   // { "商品名|款式": 已購買數量 }
+let currentPurchaseEvent = "";
+
+function loadOrderSummary(eventName) {
+  currentPurchaseEvent = eventName;
+  purchaseChanges = {};
+  updatePurchaseFloatSave();
+
+  const content = document.getElementById('purchaseContent');
+  const grid = document.getElementById('orderSummaryGrid');
+  content.style.display = 'none';
+  grid.innerHTML = '<div class="os-empty">載入中...</div>';
+
+  const ct = document.getElementById('osTotalYen');
+  ct.innerText = '¥ —';
+
+  fetch(GAS + '?action=getOrderSummary&event=' + encodeURIComponent(eventName))
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { grid.innerHTML = `<div class="os-empty">❌ ${data.error}</div>`; content.style.display = 'block'; return; }
+      purchaseData = data.items || [];
+      content.style.display = 'block';
+      renderOrderSummary();
+    })
+    .catch(e => { grid.innerHTML = '<div class="os-empty">❌ 載入失敗，請確認 GAS 已重新部署。</div>'; content.style.display = 'block'; console.error(e); });
+}
+
+function renderOrderSummary() {
+  const grid = document.getElementById('orderSummaryGrid');
+  const fallback = 'https://res.cloudinary.com/disr3dmsj/image/upload/v1776507968/uploads/2025-08/km1wihlxni7v7docvkb0.webp';
+
+  if (!purchaseData.length) {
+    grid.innerHTML = '<div class="os-empty">此活動沒有已付款訂單</div>';
+    document.getElementById('osTotalYen').innerText = '¥ 0';
+    return;
+  }
+
+  let grandTotalYen = 0;
+  grid.innerHTML = '';
+
+  purchaseData.forEach(product => {
+    const card = document.createElement('div');
+    card.className = 'oscard';
+
+    const imgSrc = product.subs[0] && product.subs[0].photo && product.subs[0].photo.startsWith('http')
+                   ? product.subs[0].photo : fallback;
+
+    // 計算此商品總日幣
+    const prodTotalYen = product.subs.reduce((s, sub) => s + (sub.totalYen || 0), 0);
+    grandTotalYen += prodTotalYen;
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'oscard-header';
+    header.innerHTML = `
+      <img class="oscard-img" src="${imgSrc}" onerror="this.src='${fallback}'" />
+      <div>
+        <div class="oscard-name">${product.name}</div>
+        <div style="font-size:11px; color:#aaa; margin-top:3px;">¥ ${prodTotalYen.toLocaleString()}</div>
+      </div>`;
+    card.appendChild(header);
+
+    // 欄標題行
+    const headerRow = document.createElement('div');
+    headerRow.className = 'osrow header-row';
+    headerRow.innerHTML = `
+      <span>款式</span>
+      <span style="text-align:center;">需購買</span>
+      <span style="text-align:right;">日幣總額</span>
+      <span style="text-align:center;">已購買</span>
+      <span style="text-align:center;">全選</span>`;
+    card.appendChild(headerRow);
+
+    // 款式行
+    product.subs.forEach(sub => {
+      const key = product.name + '|' + sub.sub;
+      const currentBought = purchaseChanges.hasOwnProperty(key) ? purchaseChanges[key] : sub.purchased;
+      const isDone = currentBought >= sub.qty && sub.qty > 0;
+
+      const row = document.createElement('div');
+      row.className = 'osrow';
+      row.dataset.key = key;
+
+      // 生成下拉選項（0 到 需購買數量）
+      let options = '<option value="0">0</option>';
+      for (let i = 1; i <= Math.max(sub.qty, currentBought, 10); i++) {
+        options += `<option value="${i}" ${currentBought === i ? 'selected' : ''}>${i}</option>`;
+      }
+
+      row.innerHTML = `
+        <span class="osrow-sub">${sub.sub || '（無款式）'}</span>
+        <span class="osrow-qty">${sub.qty}</span>
+        <span class="osrow-yen">¥ ${(sub.totalYen || 0).toLocaleString()}</span>
+        <span class="osrow-bought">
+          <select class="bought-select${isDone ? ' done' : ''}" data-key="${key}" data-max="${sub.qty}"
+                  onchange="onBoughtChange(this)">
+            ${options}
+          </select>
+        </span>
+        <span class="osrow-check">
+          <input type="checkbox" class="os-check" data-key="${key}" data-qty="${sub.qty}"
+                 ${isDone ? 'checked' : ''}
+                 onchange="onCheckChange(this)">
+        </span>`;
+      card.appendChild(row);
+    });
+
+    grid.appendChild(card);
+  });
+
+  document.getElementById('osTotalYen').innerText = '¥ ' + grandTotalYen.toLocaleString();
+}
+
+function onBoughtChange(sel) {
+  const key = sel.dataset.key;
+  const max = parseInt(sel.dataset.max) || 0;
+  const val = parseInt(sel.value) || 0;
+  purchaseChanges[key] = val;
+  sel.className = 'bought-select' + (val >= max && max > 0 ? ' done' : '');
+  // 同步 checkbox
+  const cb = document.querySelector(`.os-check[data-key="${key}"]`);
+  if (cb) cb.checked = (val >= max && max > 0);
+  updatePurchaseFloatSave();
+}
+
+function onCheckChange(cb) {
+  const key = cb.dataset.key;
+  const qty = parseInt(cb.dataset.qty) || 0;
+  const val = cb.checked ? qty : 0;
+  purchaseChanges[key] = val;
+  // 同步 select
+  const sel = document.querySelector(`.bought-select[data-key="${key}"]`);
+  if (sel) {
+    sel.value = val;
+    sel.className = 'bought-select' + (cb.checked ? ' done' : '');
+  }
+  updatePurchaseFloatSave();
+}
+
+function selectAllBought() {
+  document.querySelectorAll('.os-check').forEach(cb => {
+    cb.checked = true;
+    onCheckChange(cb);
+  });
+}
+function clearAllBought() {
+  document.querySelectorAll('.os-check').forEach(cb => {
+    cb.checked = false;
+    onCheckChange(cb);
+  });
+}
+
+function updatePurchaseFloatSave() {
+  const count = Object.keys(purchaseChanges).length;
+  const el = document.getElementById('floatSave');
+  document.getElementById('floatBadge').innerText = count > 0
+    ? `已修改 ${count} 項` : '無變更';
+  el.className = 'float-save' + (count > 0 ? ' visible' : '');
 }
 
 // ── Events ──
