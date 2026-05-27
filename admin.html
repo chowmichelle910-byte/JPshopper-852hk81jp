@@ -611,13 +611,30 @@ function loadProducts(sheetName) {
   grid.innerHTML = '<div class="stock-empty">載入中...</div>';
 
   fetch(GAS + '?action=getProducts&sheetName=' + encodeURIComponent(sheetName))
-    .then(r => r.json())
+    .then(r => {
+      const ct = r.headers.get('content-type') || '';
+      if (!ct.includes('json')) {
+        // GAS 回傳非 JSON，通常是未重新部署
+        throw new Error('GAS_NOT_JSON');
+      }
+      return r.json();
+    })
     .then(data => {
-      if (data.error) { grid.innerHTML = `<div class="stock-empty">❌ ${data.error}</div>`; return; }
+      if (data.error) {
+        grid.innerHTML = `<div class="stock-empty">❌ ${data.error}</div>`;
+        return;
+      }
       stockData = data.products || [];
       renderStockGrid();
     })
-    .catch(e => { grid.innerHTML = '<div class="stock-empty">❌ 載入失敗</div>'; console.error(e); });
+    .catch(e => {
+      if (e.message === 'GAS_NOT_JSON') {
+        grid.innerHTML = '<div class="stock-empty">❌ GAS 尚未重新部署，請到 Google Apps Script → 部署 → 管理部署，建立新版本後再試。</div>';
+      } else {
+        grid.innerHTML = `<div class="stock-empty">❌ 載入失敗：${e.message}</div>`;
+      }
+      console.error(e);
+    });
 }
 
 function renderStockGrid() {
