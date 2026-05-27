@@ -364,15 +364,21 @@ function shopApp() {
       const key = productName + '|' + sub;
       return this.orderedQty[key] || 0;
     },
-    // 某款式是否售完（有限購且已達上限）
     isSoldOut(product, sub) {
-      if (product.stockLimit === null || product.stockLimit === undefined) return false;
-      return this.soldOutQty(product.name, sub) >= product.stockLimit;
+      const ssl = product.subStockLimit;
+      if (!ssl) return false;
+      const limit = ssl.hasOwnProperty(sub) ? ssl[sub]
+                  : ssl.hasOwnProperty('__all__') ? ssl['__all__'] : null;
+      if (limit === null || limit === undefined) return false;
+      return this.soldOutQty(product.name, sub) >= limit;
     },
-    // 某款式剩餘數量
     remaining(product, sub) {
-      if (product.stockLimit === null || product.stockLimit === undefined) return null;
-      return Math.max(0, product.stockLimit - this.soldOutQty(product.name, sub));
+      const ssl = product.subStockLimit;
+      if (!ssl) return null;
+      const limit = ssl.hasOwnProperty(sub) ? ssl[sub]
+                  : ssl.hasOwnProperty('__all__') ? ssl['__all__'] : null;
+      if (limit === null || limit === undefined) return null;
+      return Math.max(0, limit - this.soldOutQty(product.name, sub));
     },
 
     scrollToRecipient() { document.getElementById('recipient-section')?.scrollIntoView({behavior:'smooth'}); },
@@ -443,7 +449,7 @@ function shopApp() {
       };
       try {
         await fetch(GAS_API_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-        alert(`🎉 訂單提交成功！\n\n應付總額：HK$${this.totalAmount}\n確認信已寄出，我哋會於收取付款後為客人訂購。\n\n如遇缺貨，則缺貨商品全額退款。多謝！`);
+        alert(`🎉 訂單提交成功！\n\n應付總額：HK$${this.totalAmount}\n確認信已寄出，多謝！`);
         this.cart={}; this.form.name=''; this.form.phone=''; this.form.email=''; this.selectedAddressIndex='';
       } catch(e) { alert('提交失敗，請檢查網絡連線。'); }
       finally { this.submitting=false; }
