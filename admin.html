@@ -678,14 +678,29 @@ function renderOrders(orders, bodyId, region, cls) {
     const eventName = order.event || '現場快閃代購';
     const payMethod = order.payMethod || '未選';
 
-    // 解析商品明細
+    // 解析商品明細，並查找對應圖片
     const parsedItems = parseSummaryFrontend(order.summary || '');
+    const photoLookup = {};  // { 商品名: photoUrl }
+    (order.productPhotos || []).forEach(p => { photoLookup[p.name] = p.photo; });
+
+    function getItemPhoto(itemName) {
+      if (photoLookup[itemName]) return photoLookup[itemName] || fallback;
+      // 模糊比對
+      const clean = itemName.toLowerCase().replace(/\s/g, '');
+      for (const key in photoLookup) {
+        const kc = key.toLowerCase().replace(/\s/g, '');
+        if (clean === kc || clean.includes(kc) || kc.includes(clean)) return photoLookup[key] || fallback;
+      }
+      return fallback;
+    }
+
     let itemsHtml = '';
     parsedItems.forEach(item => {
       const subText = item.sub ? ` <span style="color:var(--muted);font-weight:400;">(${item.sub})</span>` : '';
+      const imgSrc = getItemPhoto(item.name);
       itemsHtml += `
         <div class="ocard-item">
-          <img class="ocard-item-img" src="${fallback}" />
+          <img class="ocard-item-img" src="${imgSrc}" onerror="this.src='${fallback}'" />
           <div class="ocard-item-info">
             <div class="ocard-item-name">${item.name}${subText}</div>
           </div>
