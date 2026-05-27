@@ -752,8 +752,8 @@ function renderOrders(orders, bodyId, region, cls) {
           <span class="ocard-total-label">${payMethod}</span>
           <span class="ocard-total-amount ${cls}">${currency} ${order.amount || 0}</span>
         </div>
-        ${order.paymentTime ? `<div style="font-size:11px; color:var(--success); margin-top:8px; padding-top:8px; border-top:1px dashed var(--border);">✅ 已收款確認：${formatPaymentTime(order.paymentTime)}</div>` : ''}
-        ${order.remark ? `<div style="font-size:11px; color:var(--muted); margin-top:4px;">📝 ${order.remark}</div>` : ''}
+        ${order.paymentTime ? '<div style="font-size:11px;color:#10b981;margin-top:8px;padding-top:8px;border-top:1px dashed #e5e7eb;">Paid: ' + formatPaymentTime(order.paymentTime) + '</div>' : ''}
+        ${order.remark ? '<div style="font-size:11px;color:#6b7280;margin-top:4px;">Note: ' + order.remark + '</div>' : ''}
       </div>`;
     container.appendChild(card);
   });
