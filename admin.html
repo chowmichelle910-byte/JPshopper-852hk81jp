@@ -952,8 +952,11 @@ function renderOrderSummary() {
     const card = document.createElement('div');
     card.className = 'oscard';
 
-    const imgSrc = product.subs[0] && product.subs[0].photo && product.subs[0].photo.startsWith('http')
-                   ? product.subs[0].photo : fallback;
+    // ── 圖片：逐一嘗試每個款式直到找到有效 URL ──
+    let imgSrc = fallback;
+    for (const sub of product.subs) {
+      if (sub.photo && sub.photo.startsWith('http')) { imgSrc = sub.photo; break; }
+    }
 
     // 計算此商品總日幣
     const prodTotalYen = product.subs.reduce((s, sub) => s + (sub.totalYen || 0), 0);
@@ -978,23 +981,31 @@ function renderOrderSummary() {
       <span style="text-align:center;">需購買</span>
       <span style="text-align:right;">日幣總額</span>
       <span style="text-align:center;">已購買</span>
-      <span style="text-align:center;">全選</span>`;
+      <span style="text-align:center;">✓</span>`;
     card.appendChild(headerRow);
 
     // 款式行
     product.subs.forEach(sub => {
       const key = product.name + '|' + sub.sub;
-      const currentBought = purchaseChanges.hasOwnProperty(key) ? purchaseChanges[key] : sub.purchased;
-      const isDone = currentBought >= sub.qty && sub.qty > 0;
+      const savedBought = purchaseChanges.hasOwnProperty(key) ? purchaseChanges[key] : sub.purchased;
+      // ── 預設值：已有儲存值就用儲存值，否則預設為需購買數量 ──
+      const defaultBought = savedBought > 0 ? savedBought : sub.qty;
+      const isDone = defaultBought >= sub.qty && sub.qty > 0;
+
+      // 初始化 purchaseChanges（讓儲存時能帶上預設值）
+      if (!purchaseChanges.hasOwnProperty(key)) {
+        purchaseChanges[key] = defaultBought;
+      }
 
       const row = document.createElement('div');
       row.className = 'osrow';
       row.dataset.key = key;
 
-      // 生成下拉選項（0 到 需購買數量）
-      let options = '<option value="0">0</option>';
-      for (let i = 1; i <= Math.max(sub.qty, currentBought, 10); i++) {
-        options += `<option value="${i}" ${currentBought === i ? 'selected' : ''}>${i}</option>`;
+      // 生成下拉選項（0 到 max(需購買, 已購買, 10)）
+      const maxOpt = Math.max(sub.qty, defaultBought, 10);
+      let options = `<option value="0"${defaultBought === 0 ? ' selected' : ''}>0</option>`;
+      for (let i = 1; i <= maxOpt; i++) {
+        options += `<option value="${i}"${defaultBought === i ? ' selected' : ''}>${i}</option>`;
       }
 
       row.innerHTML = `
@@ -1019,6 +1030,8 @@ function renderOrderSummary() {
   });
 
   document.getElementById('osTotalYen').innerText = '¥ ' + grandTotalYen.toLocaleString();
+  // 渲染完後同步更新浮動按鈕（因為預設值已寫入 purchaseChanges）
+  updatePurchaseFloatSave();
 }
 
 function onBoughtChange(sel) {
@@ -1048,15 +1061,20 @@ function onCheckChange(cb) {
 }
 
 function selectAllBought() {
-  document.querySelectorAll('.os-check').forEach(cb => {
-    cb.checked = true;
-    onCheckChange(cb);
+  // 全選：把所有款式設為「需購買數量」
+  document.querySelectorAll('.bought-select').forEach(sel => {
+    const max = parseInt(sel.dataset.max) || 0;
+    if (max > 0) {
+      sel.value = max;
+      onBoughtChange(sel);
+    }
   });
 }
 function clearAllBought() {
-  document.querySelectorAll('.os-check').forEach(cb => {
-    cb.checked = false;
-    onCheckChange(cb);
+  // 清除：全部歸零
+  document.querySelectorAll('.bought-select').forEach(sel => {
+    sel.value = 0;
+    onBoughtChange(sel);
   });
 }
 
