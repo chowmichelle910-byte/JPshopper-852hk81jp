@@ -190,6 +190,49 @@
     .stock-soldout-btn:hover { opacity: 0.85; }
     .stock-empty { color: #bbb; font-size: 13px; text-align: center; padding: 40px; grid-column: 1/-1; }
 
+    /* ── 取消訂單彈窗 ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      z-index: 300; display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+    .modal {
+      background: var(--card); border-radius: 14px;
+      width: 100%; max-width: 460px; max-height: 90vh;
+      overflow-y: auto; padding: 24px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+    .modal-subtitle { font-size: 12px; color: var(--muted); margin-bottom: 20px; font-family: monospace; }
+    .modal-section-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .reason-btns { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+    .reason-btn {
+      padding: 10px 14px; border: 1.5px solid var(--border);
+      background: var(--card); border-radius: 8px;
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      text-align: left; transition: all 0.15s; color: var(--ink);
+    }
+    .reason-btn:hover { border-color: var(--danger); }
+    .reason-btn.selected { border-color: var(--danger); background: #fff5f5; color: var(--danger); }
+    .stockout-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; max-height: 200px; overflow-y: auto; }
+    .stockout-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px; border: 1px solid var(--border);
+      border-radius: 7px; cursor: pointer; transition: background 0.15s;
+    }
+    .stockout-item:hover { background: #fafafa; }
+    .stockout-item.checked { background: #fff5f5; border-color: #fca5a5; }
+    .stockout-item input[type=checkbox] { width: 15px; height: 15px; flex-shrink: 0; cursor: pointer; }
+    .stockout-item-name { font-size: 12px; color: #333; flex: 1; }
+    .select-all-link { font-size: 11px; color: var(--accent); cursor: pointer; margin-bottom: 8px; display: inline-block; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+    .modal-cancel-btn { padding: 9px 18px; background: none; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; cursor: pointer; color: var(--muted); }
+    .modal-confirm-btn { padding: 9px 18px; background: var(--danger); border: none; border-radius: 7px; font-size: 13px; font-weight: 700; cursor: pointer; color: #fff; transition: background 0.15s; }
+    .modal-confirm-btn:hover { background: #dc2626; }
+    .modal-confirm-btn:disabled { background: #ccc; cursor: not-allowed; }
+    .cancel-order-btn { padding: 5px 10px; background: none; border: 1px solid #fca5a5; border-radius: 6px; font-size: 11px; font-weight: 600; color: var(--danger); cursor: pointer; transition: all 0.15s; }
+    .cancel-order-btn:hover { background: #fff5f5; }
+
     /* ── 訂單卡片 ── */
     .order-cards { display: flex; flex-direction: column; gap: 12px; }
     .ocard {
@@ -586,6 +629,29 @@
   </div><!-- /main -->
 </div><!-- /adminApp -->
 
+<!-- 取消訂單彈窗 -->
+<div class="modal-overlay" id="cancelModal" style="display:none;">
+  <div class="modal">
+    <div class="modal-title">取消訂單</div>
+    <div class="modal-subtitle" id="cancelModalOrderId"></div>
+    <div class="modal-section-label">取消原因</div>
+    <div class="reason-btns">
+      <button class="reason-btn" onclick="selectReason('A',this)">⏰ 未收到付款</button>
+      <button class="reason-btn" onclick="selectReason('B',this)">📦 商品缺貨</button>
+      <button class="reason-btn" onclick="selectReason('C',this)">🙋 應客人要求</button>
+    </div>
+    <div id="stockoutSection" style="display:none;">
+      <div class="modal-section-label">選擇缺貨商品</div>
+      <span class="select-all-link" onclick="toggleSelectAllStockout()">全選 / 取消全選</span>
+      <div class="stockout-list" id="stockoutList"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel-btn" onclick="closeCancelModal()">取消</button>
+      <button class="modal-confirm-btn" id="cancelConfirmBtn" disabled onclick="confirmCancelOrder()">確認發送取消通知</button>
+    </div>
+  </div>
+</div>
+
 <!-- Float Save -->
 <div class="float-save" id="floatSave">
   <div class="float-badge" id="floatBadge">已修改 0 項</div>
@@ -793,10 +859,13 @@ function renderOrders(orders, bodyId, region, cls) {
     card.innerHTML = `
       <div class="ocard-top">
         <span class="ocard-date${overdue ? ' overdue' : ''}">${fmtDate}${overdue ? ' ⚠️' : ''}</span>
-        <button id="btn-${order.id}" class="ocard-status-btn ${isPaid ? 'paid' : 'unpaid'}"
-          ${isPaid ? 'disabled' : `onclick="confirmPayment('${order.id}')"`}>
-          ${isPaid ? '✓ 已收款' : '確認收款 💰'}
-        </button>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <button class="cancel-order-btn" data-oid="${order.id}" data-sum="${encodeURIComponent(order.summary || '')}" onclick="openCancelModal(this.dataset.oid, decodeURIComponent(this.dataset.sum))">取消訂單</button>
+          <button id="btn-${order.id}" class="ocard-status-btn ${isPaid ? 'paid' : 'unpaid'}"
+            ${isPaid ? 'disabled' : `onclick="confirmPayment('${order.id}')"`}>
+            ${isPaid ? '✓ 已收款' : '確認收款 💰'}
+          </button>
+        </div>
       </div>
       <div class="ocard-body">
         <div class="ocard-orderid">${order.id}</div>
@@ -1410,6 +1479,126 @@ function applyFilter(region) {
   countEl.innerText = filter === 'all' ? `${total} 筆` : `${showing} / ${total} 筆`;
 
   renderOrders(filtered, 'body' + region_upper, region_upper, region);
+}
+
+// ── 取消訂單彈窗 ──
+let cancelTargetOrderId = '';
+let cancelTargetSummary = '';
+let selectedReason = '';
+
+function openCancelModal(orderId, summary) {
+  cancelTargetOrderId = orderId;
+  cancelTargetSummary = summary;
+  selectedReason = '';
+  document.getElementById('cancelModalOrderId').innerText = orderId;
+  document.getElementById('cancelConfirmBtn').disabled = true;
+  // 重置原因按鈕
+  document.querySelectorAll('.reason-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('stockoutSection').style.display = 'none';
+  document.getElementById('stockoutList').innerHTML = '';
+  document.getElementById('cancelModal').style.display = 'flex';
+}
+
+function closeCancelModal() {
+  document.getElementById('cancelModal').style.display = 'none';
+}
+
+function selectReason(reason, btn) {
+  selectedReason = reason;
+  document.querySelectorAll('.reason-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+
+  if (reason === 'B') {
+    // 顯示商品列表
+    const items = parseSummaryFrontend(cancelTargetSummary);
+    const list = document.getElementById('stockoutList');
+    list.innerHTML = '';
+    items.forEach((item, idx) => {
+      const key = item.name + '|' + item.sub;
+      const label = item.name + (item.sub ? ' (' + item.sub + ')' : '') + ' × ' + item.qty;
+      const div = document.createElement('div');
+      div.className = 'stockout-item';
+      div.dataset.key = key;
+      div.dataset.name = item.name;
+      div.dataset.sub = item.sub || '';
+      div.innerHTML = `<input type="checkbox" id="so-${idx}" onchange="updateStockoutBtn()"> <label for="so-${idx}" class="stockout-item-name" style="cursor:pointer;">${label}</label>`;
+      div.querySelector('label').onclick = (e) => {
+        const cb = div.querySelector('input');
+        cb.checked = !cb.checked;
+        div.classList.toggle('checked', cb.checked);
+        updateStockoutBtn();
+        e.preventDefault();
+      };
+      div.querySelector('input').onchange = () => {
+        div.classList.toggle('checked', div.querySelector('input').checked);
+        updateStockoutBtn();
+      };
+      list.appendChild(div);
+    });
+    document.getElementById('stockoutSection').style.display = 'block';
+    document.getElementById('cancelConfirmBtn').disabled = true;
+  } else {
+    document.getElementById('stockoutSection').style.display = 'none';
+    document.getElementById('cancelConfirmBtn').disabled = false;
+  }
+}
+
+function toggleSelectAllStockout() {
+  const items = document.querySelectorAll('#stockoutList .stockout-item input');
+  const allChecked = Array.from(items).every(cb => cb.checked);
+  items.forEach(cb => {
+    cb.checked = !allChecked;
+    cb.closest('.stockout-item').classList.toggle('checked', !allChecked);
+  });
+  updateStockoutBtn();
+}
+
+function updateStockoutBtn() {
+  const checked = document.querySelectorAll('#stockoutList .stockout-item input:checked');
+  document.getElementById('cancelConfirmBtn').disabled = checked.length === 0;
+}
+
+function confirmCancelOrder() {
+  const btn = document.getElementById('cancelConfirmBtn');
+  btn.innerText = '發送中...';
+  btn.disabled = true;
+
+  if (selectedReason === 'B') {
+    // 缺貨：收集勾選的商品
+    const checked = document.querySelectorAll('#stockoutList .stockout-item.checked');
+    const outOfStockItems = Array.from(checked).map(div => ({
+      name: div.dataset.name,
+      sub: div.dataset.sub
+    }));
+    fetch(GAS, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'sendStockoutEmail', orderId: cancelTargetOrderId, outOfStockItems })
+    }).then(() => {
+      closeCancelModal();
+      alert('✅ 缺貨通知已發送，訂單狀態已更新為「已取消」。');
+      fetchOrders();
+    }).catch(err => {
+      alert('❌ 發送失敗，請重試。');
+      btn.innerText = '確認發送取消通知';
+      btn.disabled = false;
+    });
+  } else {
+    // A 或 C
+    fetch(GAS, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'sendCancelEmail', orderId: cancelTargetOrderId, reason: selectedReason })
+    }).then(() => {
+      closeCancelModal();
+      alert('✅ 取消通知已發送，訂單狀態已更新為「已取消」。');
+      fetchOrders();
+    }).catch(err => {
+      alert('❌ 發送失敗，請重試。');
+      btn.innerText = '確認發送取消通知';
+      btn.disabled = false;
+    });
+  }
 }
 
 function saveShipmentRef(orderId, btn) {
