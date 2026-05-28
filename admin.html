@@ -232,6 +232,27 @@
     .modal-confirm-btn:disabled { background: #ccc; cursor: not-allowed; }
     .cancel-order-btn { padding: 5px 10px; background: none; border: 1px solid #fca5a5; border-radius: 6px; font-size: 11px; font-weight: 600; color: var(--danger); cursor: pointer; transition: all 0.15s; }
     .cancel-order-btn:hover { background: #fff5f5; }
+    .resend-btn { padding: 5px 10px; background: none; border: 1px solid var(--border); border-radius: 6px; font-size: 11px; font-weight: 600; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+    .resend-btn:hover { border-color: var(--ink); color: var(--ink); }
+    .resend-btn.sending { opacity: 0.6; cursor: not-allowed; }
+    .resend-btn.sent { border-color: var(--success); color: var(--success); }
+    .edit-order-btn { padding: 5px 10px; background: none; border: 1px solid #93c5fd; border-radius: 6px; font-size: 11px; font-weight: 600; color: #2563eb; cursor: pointer; transition: all 0.15s; }
+    .edit-order-btn:hover { background: #eff6ff; }
+    .ocard.editing { border-color: #93c5fd; background: #f0f7ff; }
+    .ocard-edit-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+    .ocard-edit-label { font-size: 10px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .ocard-edit-input {
+      width: 100%; padding: 7px 10px; border: 1px solid #93c5fd;
+      border-radius: 6px; font-size: 13px; background: #fff;
+      outline: none; transition: border-color 0.2s;
+    }
+    .ocard-edit-input:focus { border-color: #2563eb; }
+    .ocard-edit-input.email-warn { border-color: var(--warning); background: #fffbeb; }
+    .email-warn-msg { font-size: 11px; color: var(--warning); font-weight: 600; margin-top: 2px; }
+    .edit-actions { display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed #93c5fd; }
+    .edit-save-btn { flex: 1; padding: 8px; background: #2563eb; color: #fff; border: none; border-radius: 7px; font-size: 13px; font-weight: 700; cursor: pointer; }
+    .edit-save-btn:hover { background: #1d4ed8; }
+    .edit-cancel-btn { padding: 8px 16px; background: none; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; cursor: pointer; color: var(--muted); }
 
     /* ── 訂單卡片 ── */
     .order-cards { display: flex; flex-direction: column; gap: 12px; }
@@ -856,10 +877,22 @@ function renderOrders(orders, bodyId, region, cls) {
 
     const card = document.createElement('div');
     card.className = `ocard${overdue ? ' overdue-card' : ''}`;
+    card.dataset.orderId  = order.id;
+    card.dataset.region   = cls;
+    card.dataset.order    = encodeURIComponent(JSON.stringify({
+      id: order.id, name: order.name, phone: order.phone, email: order.email,
+      summary: order.summary, amount: order.amount, shippingFee: order.shippingFee || 0,
+      jpyAmount: order.jpyAmount || 0, payMethod: order.payMethod || '',
+      pickupType: order.pickupType || '', pickupCode: order.pickupCode || '',
+      pickupName: order.pickupName || '', pickupAddress: order.pickupAddress || '',
+      status: order.status || '', remark: order.remark || ''
+    }));
     card.innerHTML = `
       <div class="ocard-top">
         <span class="ocard-date${overdue ? ' overdue' : ''}">${fmtDate}${overdue ? ' ⚠️' : ''}</span>
         <div style="display:flex; gap:6px; align-items:center;">
+          <button class="edit-order-btn" data-oid="${order.id}" onclick="toggleEditMode(this.dataset.oid)">✏️ 編輯</button>
+          <button class="resend-btn" data-oid="${order.id}" onclick="resendPendingEmail(this.dataset.oid, this)">重發確認信</button>
           <button class="cancel-order-btn" data-oid="${order.id}" data-sum="${encodeURIComponent(order.summary || '')}" onclick="openCancelModal(this.dataset.oid, decodeURIComponent(this.dataset.sum))">取消訂單</button>
           <button id="btn-${order.id}" class="ocard-status-btn ${isPaid ? 'paid' : 'unpaid'}"
             ${isPaid ? 'disabled' : `onclick="confirmPayment('${order.id}')"`}>
@@ -1599,6 +1632,219 @@ function confirmCancelOrder() {
       btn.disabled = false;
     });
   }
+}
+
+// ── 訂單編輯 ──
+// 常見 email 域名錯字對照
+const EMAIL_TYPOS = {
+  '.con': '.com', '.cmo': '.com', '.ocm': '.com',
+  '.vom': '.com', '.xom': '.com', '.cpm': '.com',
+  '.gmai.com': '.gmail.com', '.gamil.com': '.gmail.com',
+  '.yaho.com': '.yahoo.com', '.outlok.com': '.outlook.com',
+};
+
+function checkEmailTypo(email) {
+  const lower = email.toLowerCase();
+  for (const typo in EMAIL_TYPOS) {
+    if (lower.endsWith(typo)) {
+      return EMAIL_TYPOS[typo];  // 返回建議的正確後綴
+    }
+  }
+  return null;
+}
+
+function toggleEditMode(orderId) {
+  const card = document.querySelector(`.ocard[data-order-id="${orderId}"]`);
+  if (!card) {
+    // dataset.orderId 用 camelCase 對應 data-order-id
+    const card2 = [...document.querySelectorAll('.ocard')].find(c => c.dataset.orderId === orderId);
+    if (card2) return toggleEditMode2(card2);
+    return;
+  }
+  toggleEditMode2(card);
+}
+
+function toggleEditMode2(card) {
+  // 如果已在編輯模式，取消
+  if (card.classList.contains('editing')) {
+    exitEditMode(card);
+    return;
+  }
+
+  const orderId = card.dataset.orderId;
+  const orderData = JSON.parse(decodeURIComponent(card.dataset.order));
+  const cls = card.dataset.region;
+  const isTW = cls === 'tw';
+
+  card.classList.add('editing');
+
+  // 找到 ocard-body 並在最後插入編輯表單
+  const body = card.querySelector('.ocard-body');
+  const existingForm = body.querySelector('.ocard-edit-form');
+  if (existingForm) existingForm.remove();
+
+  const form = document.createElement('div');
+  form.className = 'ocard-edit-form';
+  form.style.cssText = 'margin-top:14px; padding-top:12px; border-top:2px solid #93c5fd;';
+
+  const fields = [
+    { key: 'name',         label: '客戶姓名',    value: orderData.name },
+    { key: 'phone',        label: isTW ? '手機號碼' : '電話號碼', value: orderData.phone },
+    { key: 'email',        label: '電郵地址',    value: orderData.email, type: 'email' },
+    { key: 'payMethod',    label: '付款方式',    value: orderData.payMethod },
+    { key: 'summary',      label: '商品明細',    value: orderData.summary },
+    { key: 'amount',       label: isTW ? '台幣金額' : '港幣金額', value: orderData.amount, type: 'number' },
+    { key: 'shippingFee',  label: '運費',        value: orderData.shippingFee, type: 'number' },
+    { key: 'pickupType',   label: '取件方式',    value: orderData.pickupType },
+    { key: 'pickupCode',   label: isTW ? '賣貨便代碼' : '自提點代碼', value: orderData.pickupCode },
+    { key: 'pickupName',   label: '自提點名稱',  value: orderData.pickupName },
+    { key: 'pickupAddress',label: '自提點地址',  value: orderData.pickupAddress },
+    { key: 'status',       label: '訂單狀態',    value: orderData.status },
+    { key: 'remark',       label: '備註',        value: orderData.remark },
+  ];
+
+  let formHtml = '<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">';
+  fields.forEach(f => {
+    const isFullWidth = ['summary', 'pickupAddress', 'remark'].includes(f.key);
+    const colSpan = isFullWidth ? 'grid-column:1/-1;' : '';
+    const warnId = f.type === 'email' ? `id="email-warn-${orderId}"` : '';
+    formHtml += `<div class="ocard-edit-field" style="${colSpan}">
+      <label class="ocard-edit-label">${f.label}</label>
+      <input class="ocard-edit-input" data-key="${f.key}"
+             type="${f.type || 'text'}" value="${(f.value || '').toString().replace(/"/g, '&quot;')}"
+             ${f.type === 'email' ? `oninput="onEditEmailInput(this,'${orderId}')"` : ''}
+             ${f.key === 'summary' || f.key === 'pickupAddress' || f.key === 'remark' ? 'style="font-size:11px;"' : ''} />
+      ${f.type === 'email' ? `<div class="email-warn-msg" ${warnId} style="display:none;"></div>` : ''}
+    </div>`;
+  });
+  formHtml += '</div>';
+  formHtml += `<div class="edit-actions">
+    <button class="edit-cancel-btn" onclick="exitEditMode(this.closest('.ocard'))">取消</button>
+    <button class="edit-save-btn" onclick="saveOrderEdit('${orderId}', this.closest('.ocard'))">💾 儲存修改</button>
+  </div>`;
+
+  form.innerHTML = formHtml;
+  body.appendChild(form);
+
+  // 滾動到表單
+  form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // 更新編輯按鈕文字
+  const editBtn = card.querySelector('.edit-order-btn');
+  if (editBtn) editBtn.innerText = '✕ 取消編輯';
+}
+
+function exitEditMode(card) {
+  card.classList.remove('editing');
+  const form = card.querySelector('.ocard-edit-form');
+  if (form) form.remove();
+  const editBtn = card.querySelector('.edit-order-btn');
+  if (editBtn) editBtn.innerText = '✏️ 編輯';
+}
+
+function onEditEmailInput(input, orderId) {
+  const email = input.value.trim();
+  const warnEl = document.getElementById('email-warn-' + orderId);
+  const typoFix = checkEmailTypo(email);
+  if (typoFix && warnEl) {
+    const suggested = email.replace(/\.[a-z]+$/i, typoFix);
+    input.classList.add('email-warn');
+    warnEl.style.display = 'block';
+    warnEl.innerHTML = `⚠️ 是否打錯了？建議改為 <strong>${suggested}</strong>
+      <span style="cursor:pointer; color:var(--accent); margin-left:6px;" onclick="
+        this.closest('.ocard-edit-field').querySelector('input').value='${suggested}';
+        this.closest('.email-warn-msg').style.display='none';
+        this.closest('.ocard-edit-field').querySelector('input').classList.remove('email-warn');
+      ">[套用]</span>`;
+  } else {
+    input.classList.remove('email-warn');
+    if (warnEl) warnEl.style.display = 'none';
+  }
+}
+
+function saveOrderEdit(orderId, card) {
+  const inputs = card.querySelectorAll('.ocard-edit-input');
+  const fields = {};
+  let hasEmailWarn = false;
+
+  inputs.forEach(input => {
+    const key = input.dataset.key;
+    const val = input.value.trim();
+    fields[key] = val;
+    if (key === 'email' && checkEmailTypo(val)) hasEmailWarn = true;
+  });
+
+  // email 有警告時再次確認
+  if (hasEmailWarn) {
+    if (!confirm('電郵地址可能有錯字，確定要儲存嗎？')) return;
+  }
+
+  const saveBtn = card.querySelector('.edit-save-btn');
+  saveBtn.innerText = '儲存中...';
+  saveBtn.disabled = true;
+
+  // 欄位名對照（前端 key → GAS field name）
+  const fieldMap = {
+    summary:      'itemsSummary',
+    amount:       'totalAmount',
+    shippingFee:  'shippingFee',
+    payMethod:    'paymentMethod',
+    name:         'recipientName',
+    phone:        'recipientPhone',
+    email:        'recipientEmail',
+    pickupType:   'pickupType',
+    pickupCode:   'pickupCode',
+    pickupName:   'pickupName',
+    pickupAddress:'pickupAddress',
+    status:       'status',
+    remark:       'remark',
+  };
+
+  const gasFields = {};
+  for (const k in fields) {
+    if (fieldMap[k]) gasFields[fieldMap[k]] = fields[k];
+  }
+
+  fetch(GAS, {
+    method: 'POST', mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'updateOrder', orderId, fields: gasFields })
+  }).then(() => {
+    exitEditMode(card);
+    alert('✅ 訂單資料已更新！');
+    fetchOrders(); // 重新載入訂單
+  }).catch(err => {
+    alert('❌ 儲存失敗，請重試。');
+    saveBtn.innerText = '💾 儲存修改';
+    saveBtn.disabled = false;
+    console.error(err);
+  });
+}
+
+function resendPendingEmail(orderId, btn) {
+  if (!confirm('確定要重新發送訂單 ' + orderId + ' 的待付款確認信嗎？')) return;
+  btn.innerText = '發送中...';
+  btn.className = 'resend-btn sending';
+  btn.disabled = true;
+  fetch(GAS, {
+    method: 'POST', mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'resendPendingEmail', orderId })
+  }).then(() => {
+    btn.innerText = '✓ 已發送';
+    btn.className = 'resend-btn sent';
+    btn.disabled = false;
+    setTimeout(() => {
+      btn.innerText = '重發確認信';
+      btn.className = 'resend-btn';
+    }, 3000);
+  }).catch(err => {
+    alert('❌ 發送失敗，請重試。');
+    btn.innerText = '重發確認信';
+    btn.className = 'resend-btn';
+    btn.disabled = false;
+    console.error(err);
+  });
 }
 
 function saveShipmentRef(orderId, btn) {
