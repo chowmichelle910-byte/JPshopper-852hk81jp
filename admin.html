@@ -581,10 +581,10 @@
               <button class="filter-btn" onclick="setPurchaseFilter('unbought',this)">未購買</button>
             </div>
           </div>
-          <!-- 全選 + 總日幣 -->
-          <div class="os-select-all-row">
-            <button class="os-select-all-btn" onclick="selectAllBought()">✅ 全部標記為已購買</button>
-            <button class="os-select-all-btn" onclick="clearAllBought()">✕ 全部清除</button>
+          <!-- 全選 + 全清除（只對目前顯示的商品生效）-->
+          <div class="os-select-all-row" id="purchaseBulkActions">
+            <button class="os-select-all-btn" onclick="selectAllVisible()">✅ 全部標記為已購買</button>
+            <button class="os-select-all-btn" onclick="clearAllVisible()">✕ 清除本次選取</button>
           </div>
           <div class="os-total-bar">
             <span id="osTotalLabel">📊 尚需購買日幣總額</span>
@@ -1398,18 +1398,28 @@ function onCheckChange(cb) {
   updatePurchaseFloatSave();
 }
 
-function selectAllBought() {
-  document.querySelectorAll('.bought-select').forEach(sel => {
+// 全部標記為已購買（只對目前顯示的商品）
+function selectAllVisible() {
+  document.querySelectorAll('#orderSummaryGrid .bought-select').forEach(sel => {
     const max = parseInt(sel.dataset.max) || 0;
     if (max > 0) { sel.value = max; onBoughtChange(sel); }
   });
 }
-function clearAllBought() {
-  document.querySelectorAll('.bought-select').forEach(sel => {
-    sel.value = 0;
-    onBoughtChange(sel);
+
+// 清除本次選取（回到原始已購買紀錄，不改 purchaseChanges 的已儲存值）
+function clearAllVisible() {
+  document.querySelectorAll('#orderSummaryGrid .bought-select').forEach(sel => {
+    const key = sel.dataset.key;
+    // 從 purchaseChanges 移除，回到原始 sub.purchased
+    delete purchaseChanges[key];
   });
+  updatePurchaseFloatSave();
+  applyPurchaseFilter(); // 重新渲染
 }
+
+// 保留舊名稱供相容
+function selectAllBought() { selectAllVisible(); }
+function clearAllBought() { clearAllVisible(); }
 
 // ── 訂貨區篩選 ──
 function setPurchaseFilter(filter, btn) {
@@ -1494,7 +1504,7 @@ function applyPurchaseFilter() {
 
     const headerRow = document.createElement('div');
     headerRow.className = 'osrow header-row';
-    headerRow.innerHTML = `<span>款式</span><span style="text-align:center;">還需買</span><span style="text-align:right;">日幣</span><span style="text-align:center;">已買</span><span style="text-align:center;">✓</span>`;
+    headerRow.innerHTML = `<span>款式</span><span style="text-align:center;">${purchaseFilter === 'bought' ? '已買數量' : '還需買'}</span><span style="text-align:right;">日幣</span><span style="text-align:center;">已買</span><span style="text-align:center;">✓</span>`;
     card.appendChild(headerRow);
 
     visibleSubs.forEach(sub => {
@@ -1541,8 +1551,29 @@ function applyPurchaseFilter() {
     grid.appendChild(card);
   });
 
+  // 已購買篩選：另外計算已購買總金額
+  if (purchaseFilter === 'bought') {
+    let boughtTotalYen = 0;
+    purchaseData.forEach(product => {
+      product.subs.forEach(sub => {
+        const key = product.name + '|' + sub.sub;
+        const curBought = purchaseChanges.hasOwnProperty(key) ? purchaseChanges[key] : sub.purchased;
+        if (curBought >= sub.qty && sub.qty > 0) {
+          boughtTotalYen += (sub.yenEach || 0) * curBought;
+        }
+      });
+    });
+    grandTotalYen = boughtTotalYen;
+  }
+
   // 更新標題和日幣
-  const filterLabels = { all:'📊 尚需購買日幣總額', paid:'📊 已付款訂單日幣總額', unpaid:'📊 未付款訂單日幣總額', bought:'📊 已購買日幣總額', unbought:'📊 未購買日幣總額' };
+  const filterLabels = {
+    all:     '📊 尚需購買日幣總額',
+    paid:    '📊 已付款訂單日幣總額',
+    unpaid:  '📊 未付款訂單日幣總額',
+    bought:  '💰 已購買日幣總額',
+    unbought:'📊 未購買日幣總額'
+  };
   document.getElementById('osTotalLabel').innerText = filterLabels[purchaseFilter] || '📊 尚需購買日幣總額';
   document.getElementById('osTotalYen').innerText = '¥ ' + grandTotalYen.toLocaleString();
   if (visibleCount === 0) grid.innerHTML = '<div class="os-empty">此篩選條件下沒有商品</div>';
