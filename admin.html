@@ -571,13 +571,23 @@
         </div>
 
         <div id="purchaseContent" style="display:none;">
+          <!-- 篩選列 -->
+          <div style="display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
+            <div class="filter-btns" id="purchaseFilterBtns">
+              <button class="filter-btn active-filter" onclick="setPurchaseFilter('all',this)">全部</button>
+              <button class="filter-btn" onclick="setPurchaseFilter('paid',this)">已付款訂單</button>
+              <button class="filter-btn" onclick="setPurchaseFilter('unpaid',this)">未付款訂單</button>
+              <button class="filter-btn" onclick="setPurchaseFilter('bought',this)">已購買</button>
+              <button class="filter-btn" onclick="setPurchaseFilter('unbought',this)">未購買</button>
+            </div>
+          </div>
           <!-- 全選 + 總日幣 -->
           <div class="os-select-all-row">
             <button class="os-select-all-btn" onclick="selectAllBought()">✅ 全部標記為已購買</button>
             <button class="os-select-all-btn" onclick="clearAllBought()">✕ 全部清除</button>
           </div>
           <div class="os-total-bar">
-            <span>📊 尚需購買日幣總額</span>
+            <span id="osTotalLabel">📊 尚需購買日幣總額</span>
             <strong id="osTotalYen">¥ —</strong>
           </div>
           <div class="order-summary-grid" id="orderSummaryGrid">
@@ -1214,6 +1224,7 @@ function savePurchasedChanges() {
 let purchaseData = [];      // 當前載入的訂貨摘要
 let purchaseChanges = {};   // { "商品名|款式": 已購買數量 }
 let currentPurchaseEvent = "";
+let purchaseFilter = 'all'; // all / paid / unpaid / bought / unbought
 
 function loadOrderSummary(eventName) {
   currentPurchaseEvent = eventName;
@@ -1233,6 +1244,8 @@ function loadOrderSummary(eventName) {
     .then(data => {
       if (data.error) { grid.innerHTML = `<div class="os-empty">❌ ${data.error}</div>`; content.style.display = 'block'; return; }
       purchaseData = data.items || [];
+      purchaseFilter = 'all';
+      document.querySelectorAll('#purchaseFilterBtns .filter-btn').forEach((b,i) => b.className = i===0 ? 'filter-btn active-filter' : 'filter-btn');
       content.style.display = 'block';
       renderOrderSummary();
     })
@@ -1355,7 +1368,8 @@ function renderOrderSummary() {
     grid.appendChild(card);
   });
 
-  document.getElementById('osTotalYen').innerText = '¥ ' + grandTotalYen.toLocaleString();
+  // 渲染完成後套用目前的篩選（預設 all）
+  applyPurchaseFilter();
 }
 
 function onBoughtChange(sel) {
@@ -1385,21 +1399,150 @@ function onCheckChange(cb) {
 }
 
 function selectAllBought() {
-  // 全選：把所有款式設為「需購買數量」
   document.querySelectorAll('.bought-select').forEach(sel => {
     const max = parseInt(sel.dataset.max) || 0;
-    if (max > 0) {
-      sel.value = max;
-      onBoughtChange(sel);
-    }
+    if (max > 0) { sel.value = max; onBoughtChange(sel); }
   });
 }
 function clearAllBought() {
-  // 清除：全部歸零
   document.querySelectorAll('.bought-select').forEach(sel => {
     sel.value = 0;
     onBoughtChange(sel);
   });
+}
+
+// ── 訂貨區篩選 ──
+function setPurchaseFilter(filter, btn) {
+  purchaseFilter = filter;
+  document.querySelectorAll('#purchaseFilterBtns .filter-btn').forEach(b => b.className = 'filter-btn');
+  btn.className = 'filter-btn active-filter';
+  applyPurchaseFilter();
+}
+
+function applyPurchaseFilter() {
+  if (!purchaseData.length) return;
+  const grid = document.getElementById('orderSummaryGrid');
+  const fallback = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221%22%20height%3D%221%22%3E%3Crect%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23111%22%2F%3E%3C%2Fsvg%3E';
+  grid.innerHTML = '';
+
+  // 根據篩選條件過濾要顯示的資料
+  // 「已付款/未付款」篩選需要從訂單資料計算各款式的付款狀態數量
+  // 用 allHKOrders + allTWOrders 交叉比對
+  const paidQtyMap = {};   // { "商品名|款式": 已付款訂單的需求數量 }
+  const unpaidQtyMap = {}; // { "商品名|款式": 未付款訂單的需求數量 }
+
+  if (purchaseFilter === 'paid' || purchaseFilter === 'unpaid') {
+    const allOrders = [...allHKOrders, ...allTWOrders].filter(o => o.event === currentPurchaseEvent);
+    allOrders.forEach(order => {
+      const isPaid = order.status === '已付款' || order.status === '已收款';
+      const items = parseSummaryFrontend(order.summary || '');
+      items.forEach(item => {
+        const key = item.name + '|' + item.sub;
+        if (isPaid) {
+          paidQtyMap[key] = (paidQtyMap[key] || 0) + item.qty;
+        } else {
+          unpaidQtyMap[key] = (unpaidQtyMap[key] || 0) + item.qty;
+        }
+      });
+    });
+  }
+
+  let grandTotalYen = 0;
+  let visibleCount = 0;
+
+  purchaseData.forEach(product => {
+    // 過濾款式
+    const visibleSubs = product.subs.filter(sub => {
+      const key = product.name + '|' + sub.sub;
+      const curBought = purchaseChanges.hasOwnProperty(key) ? purchaseChanges[key] : sub.purchased;
+      const remaining = Math.max(0, sub.qty - curBought);
+      const isComplete = remaining === 0;
+
+      if (purchaseFilter === 'all')     return !isComplete || purchaseChanges.hasOwnProperty(key);
+      if (purchaseFilter === 'bought')  return isComplete;
+      if (purchaseFilter === 'unbought')return !isComplete;
+      if (purchaseFilter === 'paid')    return (paidQtyMap[key] || 0) > 0;
+      if (purchaseFilter === 'unpaid')  return (unpaidQtyMap[key] || 0) > 0;
+      return true;
+    });
+
+    if (!visibleSubs.length) return;
+    visibleCount++;
+
+    // 渲染商品卡（與 renderOrderSummary 邏輯相同）
+    const card = document.createElement('div');
+    card.className = 'oscard';
+    let imgSrc = fallback;
+    for (const sub of product.subs) {
+      if (sub.photo && sub.photo.startsWith('http')) { imgSrc = sub.photo; break; }
+    }
+    const prodRemainingYen = visibleSubs.reduce((s, sub) => {
+      const key = product.name + '|' + sub.sub;
+      const curBought = purchaseChanges.hasOwnProperty(key) ? purchaseChanges[key] : sub.purchased;
+      const rem = Math.max(0, sub.qty - curBought);
+      return s + (sub.yenEach || 0) * rem;
+    }, 0);
+    grandTotalYen += prodRemainingYen;
+
+    const header = document.createElement('div');
+    header.className = 'oscard-header';
+    header.innerHTML = `
+      <img class="oscard-img" src="${imgSrc}" onerror="this.src='${fallback}'" />
+      <div><div class="oscard-name">${product.name}</div>
+      <div style="font-size:11px; color:#aaa; margin-top:3px;">¥ ${prodRemainingYen.toLocaleString()}</div></div>`;
+    card.appendChild(header);
+
+    const headerRow = document.createElement('div');
+    headerRow.className = 'osrow header-row';
+    headerRow.innerHTML = `<span>款式</span><span style="text-align:center;">還需買</span><span style="text-align:right;">日幣</span><span style="text-align:center;">已買</span><span style="text-align:center;">✓</span>`;
+    card.appendChild(headerRow);
+
+    visibleSubs.forEach(sub => {
+      const key = product.name + '|' + sub.sub;
+      const curBought = purchaseChanges.hasOwnProperty(key) ? purchaseChanges[key] : sub.purchased;
+      const defaultBought = purchaseChanges.hasOwnProperty(key) ? curBought : sub.remaining;
+      const isDone = curBought >= sub.qty && sub.qty > 0;
+      const displayQty = Math.max(0, sub.qty - curBought);
+      const displayYen = sub.yenEach ? (sub.yenEach * displayQty).toLocaleString() : '0';
+      const maxOpt = Math.max(sub.qty, curBought, 10);
+      let options = `<option value="0"${defaultBought===0?' selected':''}>0</option>`;
+      for (let i = 1; i <= maxOpt; i++) {
+        options += `<option value="${i}"${defaultBought===i?' selected':''}>${i}</option>`;
+      }
+
+      // 加入付款狀態標籤（如適用）
+      let statusTag = '';
+      if (purchaseFilter === 'paid' && paidQtyMap[key]) {
+        statusTag = `<span style="font-size:10px; background:#f0fdf4; color:#16a34a; padding:1px 5px; border-radius:3px; margin-left:4px;">已付 ${paidQtyMap[key]}</span>`;
+      } else if (purchaseFilter === 'unpaid' && unpaidQtyMap[key]) {
+        statusTag = `<span style="font-size:10px; background:#fef3c7; color:#92400e; padding:1px 5px; border-radius:3px; margin-left:4px;">待付 ${unpaidQtyMap[key]}</span>`;
+      }
+
+      const row = document.createElement('div');
+      row.className = 'osrow';
+      row.dataset.key = key;
+      row.innerHTML = `
+        <span class="osrow-sub">${sub.sub || ''}${statusTag}</span>
+        <span class="osrow-qty" title="總需購買: ${sub.qty}, 已購買: ${curBought}">${displayQty}</span>
+        <span class="osrow-yen">¥ ${displayYen}</span>
+        <span class="osrow-bought">
+          <select class="bought-select${isDone?' done':''}" data-key="${key}" data-max="${sub.qty}" onchange="onBoughtChange(this)">
+            ${options}
+          </select>
+        </span>
+        <span class="osrow-check">
+          <input type="checkbox" class="os-check" data-key="${key}" data-qty="${sub.qty}" ${isDone?'checked':''} onchange="onCheckChange(this)">
+        </span>`;
+      card.appendChild(row);
+    });
+    grid.appendChild(card);
+  });
+
+  // 更新標題和日幣
+  const filterLabels = { all:'📊 尚需購買日幣總額', paid:'📊 已付款訂單日幣總額', unpaid:'📊 未付款訂單日幣總額', bought:'📊 已購買日幣總額', unbought:'📊 未購買日幣總額' };
+  document.getElementById('osTotalLabel').innerText = filterLabels[purchaseFilter] || '📊 尚需購買日幣總額';
+  document.getElementById('osTotalYen').innerText = '¥ ' + grandTotalYen.toLocaleString();
+  if (visibleCount === 0) grid.innerHTML = '<div class="os-empty">此篩選條件下沒有商品</div>';
 }
 
 function updatePurchaseFloatSave() {
