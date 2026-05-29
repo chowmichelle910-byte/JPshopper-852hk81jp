@@ -1542,10 +1542,17 @@ function applyPurchaseFilter() {
 
       if (isViewOnly) {
         // 只讀：不顯示下拉和 checkbox
-        const remaining = Math.max(0, sub.qty - (purchaseChanges.hasOwnProperty(key) ? purchaseChanges[key] : sub.purchased));
-        const statusHtml = remaining === 0
-          ? `<span style="font-size:10px; background:#f0fdf4; color:#16a34a; font-weight:700; padding:2px 7px; border-radius:4px; grid-column:4/6; text-align:center;">已買齊</span>`
-          : `<span style="grid-column:4/6;"></span>`;
+        const _bought = purchaseChanges.hasOwnProperty(key) ? purchaseChanges[key] : sub.purchased;
+        const remaining = Math.max(0, sub.qty - _bought);
+        const owed = purchaseFilter === 'paid' ? Math.max(0, displayQty - _bought) : 0;
+        let statusHtml = '';
+        if (owed > 0) {
+          statusHtml = `<span style="font-size:10px; background:#fee2e2; color:#dc2626; font-weight:700; padding:2px 7px; border-radius:4px; grid-column:4/6; text-align:center;">欠 ${owed}</span>`;
+        } else if (remaining === 0 && _bought > 0) {
+          statusHtml = `<span style="font-size:10px; background:#f0fdf4; color:#16a34a; font-weight:700; padding:2px 7px; border-radius:4px; grid-column:4/6; text-align:center;">已買齊</span>`;
+        } else {
+          statusHtml = `<span style="grid-column:4/6;"></span>`;
+        }
         row.innerHTML = `
           <span class="osrow-sub">${sub.sub || ''}</span>
           <span class="osrow-qty">${displayQty}</span>
