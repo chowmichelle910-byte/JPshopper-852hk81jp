@@ -1174,15 +1174,22 @@ function savePurchasedChanges() {
   btn.innerText = '儲存中...';
   btn.disabled = true;
 
-  // 整理所有商品款式的最新數量
+  // 只儲存有修改過的項目
   const items = [];
   purchaseData.forEach(product => {
     product.subs.forEach(sub => {
       const key = product.name + '|' + sub.sub;
-      const purchased = purchaseChanges.hasOwnProperty(key) ? purchaseChanges[key] : sub.purchased;
-      items.push({ name: product.name, sub: sub.sub, qty: sub.qty, purchased });
+      if (purchaseChanges.hasOwnProperty(key)) {
+        // 只有用戶真正修改過的才儲存
+        items.push({ name: product.name, sub: sub.sub, qty: sub.qty, purchased: purchaseChanges[key] });
+      }
     });
   });
+
+  if (items.length === 0) {
+    alert('沒有任何修改需要儲存。');
+    return;
+  }
 
   fetch(GAS, {
     method: 'POST', mode: 'no-cors',
@@ -1315,11 +1322,6 @@ function renderOrderSummary() {
 
       const isDone = currentBought >= sub.qty && sub.qty > 0;
 
-      // 初始化 purchaseChanges
-      if (!purchaseChanges.hasOwnProperty(key)) {
-        purchaseChanges[key] = defaultBought;
-      }
-
       const row = document.createElement('div');
       row.className = 'osrow';
       row.dataset.key = key;
@@ -1360,8 +1362,6 @@ function renderOrderSummary() {
   });
 
   document.getElementById('osTotalYen').innerText = '¥ ' + grandTotalYen.toLocaleString();
-  // 渲染完後同步更新浮動按鈕（因為預設值已寫入 purchaseChanges）
-  updatePurchaseFloatSave();
 }
 
 function onBoughtChange(sel) {
