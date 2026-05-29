@@ -1435,24 +1435,25 @@ function applyPurchaseFilter() {
   const fallback = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221%22%20height%3D%221%22%3E%3Crect%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23111%22%2F%3E%3C%2Fsvg%3E';
   grid.innerHTML = '';
 
-  // 根據篩選條件過濾要顯示的資料
-  // 「已付款/未付款」篩選需要從訂單資料計算各款式的付款狀態數量
-  // 用 allHKOrders + allTWOrders 交叉比對
-  const paidQtyMap = {};   // { "商品名|款式": 已付款訂單的需求數量 }
-  const unpaidQtyMap = {}; // { "商品名|款式": 未付款訂單的需求數量 }
+  const isViewOnly = (purchaseFilter === 'paid' || purchaseFilter === 'unpaid');
 
-  if (purchaseFilter === 'paid' || purchaseFilter === 'unpaid') {
+  // 顯示/隱藏全選按鈕和浮動儲存（只在可編輯篩選顯示）
+  const bulkActions = document.getElementById('purchaseBulkActions');
+  if (bulkActions) bulkActions.style.display = isViewOnly ? 'none' : 'flex';
+  if (isViewOnly) {
+    document.getElementById('floatSave').className = 'float-save';
+  }
+
+  // 建立付款狀態數量對照表
+  const paidQtyMap = {}, unpaidQtyMap = {};
+  if (isViewOnly || purchaseFilter === 'all') {
     const allOrders = [...allHKOrders, ...allTWOrders].filter(o => o.event === currentPurchaseEvent);
     allOrders.forEach(order => {
       const isPaid = order.status === '已付款' || order.status === '已收款';
-      const items = parseSummaryFrontend(order.summary || '');
-      items.forEach(item => {
+      parseSummaryFrontend(order.summary || '').forEach(item => {
         const key = item.name + '|' + item.sub;
-        if (isPaid) {
-          paidQtyMap[key] = (paidQtyMap[key] || 0) + item.qty;
-        } else {
-          unpaidQtyMap[key] = (unpaidQtyMap[key] || 0) + item.qty;
-        }
+        if (isPaid) paidQtyMap[key] = (paidQtyMap[key] || 0) + item.qty;
+        else unpaidQtyMap[key] = (unpaidQtyMap[key] || 0) + item.qty;
       });
     });
   }
@@ -1461,13 +1462,12 @@ function applyPurchaseFilter() {
   let visibleCount = 0;
 
   purchaseData.forEach(product => {
-    // 過濾款式
+    // 篩選款式
     const visibleSubs = product.subs.filter(sub => {
       const key = product.name + '|' + sub.sub;
       const curBought = purchaseChanges.hasOwnProperty(key) ? purchaseChanges[key] : sub.purchased;
       const remaining = Math.max(0, sub.qty - curBought);
       const isComplete = remaining === 0;
-
       if (purchaseFilter === 'all')     return !isComplete || purchaseChanges.hasOwnProperty(key);
       if (purchaseFilter === 'bought')  return isComplete;
       if (purchaseFilter === 'unbought')return !isComplete;
@@ -1475,98 +1475,120 @@ function applyPurchaseFilter() {
       if (purchaseFilter === 'unpaid')  return (unpaidQtyMap[key] || 0) > 0;
       return true;
     });
-
     if (!visibleSubs.length) return;
     visibleCount++;
 
-    // 渲染商品卡（與 renderOrderSummary 邏輯相同）
+    // 計算此商品的顯示日幣
+    const prodYen = visibleSubs.reduce((s, sub) => {
+      const key = product.name + '|' + sub.sub;
+      const curBought = purchaseChanges.hasOwnProperty(key) ? purchaseChanges[key] : sub.purchased;
+      let qty = 0;
+      if (purchaseFilter === 'paid')    qty = paidQtyMap[key] || 0;
+      else if (purchaseFilter === 'unpaid') qty = unpaidQtyMap[key] || 0;
+      else if (purchaseFilter === 'bought') qty = curBought;
+      else qty = Math.max(0, sub.qty - curBought);
+      return s + (sub.yenEach || 0) * qty;
+    }, 0);
+    grandTotalYen += prodYen;
+
+    // 商品卡
     const card = document.createElement('div');
     card.className = 'oscard';
     let imgSrc = fallback;
     for (const sub of product.subs) {
       if (sub.photo && sub.photo.startsWith('http')) { imgSrc = sub.photo; break; }
     }
-    const prodRemainingYen = visibleSubs.reduce((s, sub) => {
-      const key = product.name + '|' + sub.sub;
-      const curBought = purchaseChanges.hasOwnProperty(key) ? purchaseChanges[key] : sub.purchased;
-      const rem = Math.max(0, sub.qty - curBought);
-      return s + (sub.yenEach || 0) * rem;
-    }, 0);
-    grandTotalYen += prodRemainingYen;
 
     const header = document.createElement('div');
     header.className = 'oscard-header';
     header.innerHTML = `
       <img class="oscard-img" src="${imgSrc}" onerror="this.src='${fallback}'" />
       <div><div class="oscard-name">${product.name}</div>
-      <div style="font-size:11px; color:#aaa; margin-top:3px;">¥ ${prodRemainingYen.toLocaleString()}</div></div>`;
+      <div style="font-size:11px; color:#aaa; margin-top:3px;">¥ ${prodYen.toLocaleString()}</div></div>`;
     card.appendChild(header);
 
+    // 欄標題
     const headerRow = document.createElement('div');
     headerRow.className = 'osrow header-row';
-    headerRow.innerHTML = `<span>款式</span><span style="text-align:center;">${purchaseFilter === 'bought' ? '已買數量' : '還需買'}</span><span style="text-align:right;">日幣</span><span style="text-align:center;">已買</span><span style="text-align:center;">✓</span>`;
+    let qtyColLabel = '還需買';
+    if (purchaseFilter === 'paid')    qtyColLabel = '已付數量';
+    if (purchaseFilter === 'unpaid')  qtyColLabel = '待付數量';
+    if (purchaseFilter === 'bought')  qtyColLabel = '已買數量';
+
+    if (isViewOnly) {
+      headerRow.innerHTML = `<span>款式</span><span style="text-align:center;">${qtyColLabel}</span><span style="text-align:right;">日幣</span><span style="text-align:center;" colspan="2">狀態</span>`;
+    } else {
+      headerRow.innerHTML = `<span>款式</span><span style="text-align:center;">${qtyColLabel}</span><span style="text-align:right;">日幣</span><span style="text-align:center;">已買</span><span style="text-align:center;">✓</span>`;
+    }
     card.appendChild(headerRow);
 
+    // 款式行
     visibleSubs.forEach(sub => {
       const key = product.name + '|' + sub.sub;
       const curBought = purchaseChanges.hasOwnProperty(key) ? purchaseChanges[key] : sub.purchased;
-      const defaultBought = purchaseChanges.hasOwnProperty(key) ? curBought : sub.remaining;
       const isDone = curBought >= sub.qty && sub.qty > 0;
-      // 已購買篩選：顯示已購買數量；其他：顯示還需購買數量
-      const displayQty = purchaseFilter === 'bought'
-        ? curBought
-        : Math.max(0, sub.qty - curBought);
-      const displayYen = sub.yenEach ? (sub.yenEach * displayQty).toLocaleString() : '0';
-      const maxOpt = Math.max(sub.qty, curBought, 10);
-      let options = `<option value="0"${defaultBought===0?' selected':''}>0</option>`;
-      for (let i = 1; i <= maxOpt; i++) {
-        options += `<option value="${i}"${defaultBought===i?' selected':''}>${i}</option>`;
-      }
 
-      // 加入付款狀態標籤（如適用）
-      let statusTag = '';
-      if (purchaseFilter === 'paid' && paidQtyMap[key]) {
-        statusTag = `<span style="font-size:10px; background:#f0fdf4; color:#16a34a; padding:1px 5px; border-radius:3px; margin-left:4px;">已付 ${paidQtyMap[key]}</span>`;
-      } else if (purchaseFilter === 'unpaid' && unpaidQtyMap[key]) {
-        statusTag = `<span style="font-size:10px; background:#fef3c7; color:#92400e; padding:1px 5px; border-radius:3px; margin-left:4px;">待付 ${unpaidQtyMap[key]}</span>`;
-      }
+      let displayQty = 0;
+      if (purchaseFilter === 'paid')    displayQty = paidQtyMap[key] || 0;
+      else if (purchaseFilter === 'unpaid') displayQty = unpaidQtyMap[key] || 0;
+      else if (purchaseFilter === 'bought') displayQty = curBought;
+      else displayQty = Math.max(0, sub.qty - curBought);
+
+      const displayYen = sub.yenEach ? (sub.yenEach * displayQty).toLocaleString() : '0';
 
       const row = document.createElement('div');
       row.className = 'osrow';
       row.dataset.key = key;
-      row.innerHTML = `
-        <span class="osrow-sub">${sub.sub || ''}${statusTag}</span>
-        <span class="osrow-qty" title="總需購買: ${sub.qty}, 已購買: ${curBought}">${displayQty}</span>
-        <span class="osrow-yen">¥ ${displayYen}</span>
-        <span class="osrow-bought">
-          <select class="bought-select${isDone?' done':''}" data-key="${key}" data-max="${sub.qty}" onchange="onBoughtChange(this)">
-            ${options}
-          </select>
-        </span>
-        <span class="osrow-check">
-          <input type="checkbox" class="os-check" data-key="${key}" data-qty="${sub.qty}" ${isDone?'checked':''} onchange="onCheckChange(this)">
-        </span>`;
+
+      if (isViewOnly) {
+        // 只讀：不顯示下拉和 checkbox
+        const remaining = Math.max(0, sub.qty - (purchaseChanges.hasOwnProperty(key) ? purchaseChanges[key] : sub.purchased));
+        const statusHtml = remaining === 0
+          ? `<span style="font-size:10px; background:#f0fdf4; color:#16a34a; font-weight:700; padding:2px 7px; border-radius:4px; grid-column:4/6; text-align:center;">已買齊</span>`
+          : `<span style="grid-column:4/6;"></span>`;
+        row.innerHTML = `
+          <span class="osrow-sub">${sub.sub || ''}</span>
+          <span class="osrow-qty">${displayQty}</span>
+          <span class="osrow-yen">¥ ${displayYen}</span>
+          ${statusHtml}`;
+      } else {
+        // 可編輯
+        const defaultBought = purchaseChanges.hasOwnProperty(key) ? curBought : sub.remaining;
+        const maxOpt = Math.max(sub.qty, curBought, 10);
+        let options = `<option value="0"${defaultBought===0?' selected':''}>0</option>`;
+        for (let i = 1; i <= maxOpt; i++) {
+          options += `<option value="${i}"${defaultBought===i?' selected':''}>${i}</option>`;
+        }
+        row.innerHTML = `
+          <span class="osrow-sub">${sub.sub || ''}</span>
+          <span class="osrow-qty" title="總需: ${sub.qty}, 已買: ${curBought}">${displayQty}</span>
+          <span class="osrow-yen">¥ ${displayYen}</span>
+          <span class="osrow-bought">
+            <select class="bought-select${isDone?' done':''}" data-key="${key}" data-max="${sub.qty}" onchange="onBoughtChange(this)">
+              ${options}
+            </select>
+          </span>
+          <span class="osrow-check">
+            <input type="checkbox" class="os-check" data-key="${key}" data-qty="${sub.qty}" ${isDone?'checked':''} onchange="onCheckChange(this)">
+          </span>`;
+      }
       card.appendChild(row);
     });
     grid.appendChild(card);
   });
 
-  // 已購買篩選：另外計算已購買總金額
+  // 計算已購買篩選的總額
   if (purchaseFilter === 'bought') {
-    let boughtTotalYen = 0;
+    grandTotalYen = 0;
     purchaseData.forEach(product => {
       product.subs.forEach(sub => {
         const key = product.name + '|' + sub.sub;
         const curBought = purchaseChanges.hasOwnProperty(key) ? purchaseChanges[key] : sub.purchased;
-        if (curBought >= sub.qty && sub.qty > 0) {
-          boughtTotalYen += (sub.yenEach || 0) * curBought;
-        }
+        if (curBought >= sub.qty && sub.qty > 0) grandTotalYen += (sub.yenEach || 0) * curBought;
       });
     });
-    grandTotalYen = boughtTotalYen;
   }
 
-  // 更新標題和日幣
   const filterLabels = {
     all:     '📊 尚需購買日幣總額',
     paid:    '📊 已付款訂單日幣總額',
