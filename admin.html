@@ -1196,18 +1196,12 @@ function savePurchasedChanges() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action: 'savePurchased', eventName: currentPurchaseEvent, items })
   }).then(() => {
-    // 更新本地 purchaseData
-    purchaseData.forEach(product => {
-      product.subs.forEach(sub => {
-        const key = product.name + '|' + sub.sub;
-        if (purchaseChanges.hasOwnProperty(key)) sub.purchased = purchaseChanges[key];
-      });
-    });
     purchaseChanges = {};
-    updatePurchaseFloatSave();
     btn.innerText = '💾 確認儲存';
     btn.disabled = false;
     alert(`✅ 已成功儲存 ${items.length} 項購貨紀錄！`);
+    // 重新從 GAS 載入，讓已完成項目自動消失
+    loadOrderSummary(currentPurchaseEvent);
   }).catch(err => {
     alert('❌ 儲存失敗，請重試。');
     btn.innerText = '💾 確認儲存';
