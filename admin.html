@@ -468,6 +468,9 @@
       <div class="nav-item" onclick="goto('purchase'); closeSidebar();" id="nav-purchase">
         <span class="nav-icon">🛒</span> 訂貨區
       </div>
+      <div class="nav-item" onclick="goto('settle'); closeSidebar();" id="nav-settle">
+        <span class="nav-icon">💵</span> 結算區
+      </div>
 
       <div class="nav-section-label">活動管理</div>
       <div class="nav-item" onclick="goto('events'); closeSidebar();" id="nav-events">
@@ -592,6 +595,40 @@
           </div>
           <div class="order-summary-grid" id="orderSummaryGrid">
             <div class="os-empty">請先選擇活動</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ════ PAGE: 結算區 ════ -->
+      <div class="page" id="page-settle">
+        <div class="card">
+          <div class="card-title" style="display:flex; align-items:center; justify-content:space-between;">
+            <span><span>💵</span> 選擇活動</span>
+            <button class="topbar-btn" onclick="currentSettleEvent && loadSettleData(currentSettleEvent)" style="font-size:11px; padding:4px 10px;">🔄 重新整理</button>
+          </div>
+          <div class="event-tabs" id="eventTabsSettle">
+            <div style="color:#bbb; font-size:13px;">載入中...</div>
+          </div>
+        </div>
+        <div id="settleContent" style="display:none;">
+          <!-- 總金額區 -->
+          <div class="os-total-bar" style="flex-direction:column; align-items:flex-start; gap:4px;">
+            <div style="display:flex; justify-content:space-between; width:100%;">
+              <span>💰 已購買日幣總額</span>
+              <strong id="settleTotalYen">¥ —</strong>
+            </div>
+            <div style="display:flex; justify-content:space-between; width:100%;">
+              <span style="font-size:11px; color:#aaa;">未結算日幣總額</span>
+              <span style="font-size:11px; color:#aaa;" id="settleUnsettledYen">¥ —</span>
+            </div>
+          </div>
+          <!-- 商品列表 -->
+          <div class="order-summary-grid" id="settleGrid">
+            <div class="os-empty">請先選擇活動</div>
+          </div>
+          <!-- 全部結算按鈕（放最下方） -->
+          <div style="margin-top:24px; padding-top:16px; border-top:2px solid var(--border); text-align:center;">
+            <button class="btn btn-dark" style="padding:10px 28px;" onclick="settleAll()">✅ 全部標記已結算</button>
           </div>
         </div>
       </div>
@@ -732,11 +769,12 @@ async function loadSheetList() {
     renderEventTabs('eventTabsStock', 'stock');
     renderEventTabs('eventTabsProduct', 'product');
     renderEventTabs('eventTabsPurchase', 'purchase');
+    renderEventTabs('eventTabsSettle', 'settle');
   } catch(e) { console.error(e); }
 }
 
 // ── Navigation ──
-const pageTitles = { orders:'所有訂單', stock:'庫存管理', purchase:'訂貨區', events:'建立活動', products:'上架商品' };
+const pageTitles = { orders:'所有訂單', stock:'庫存管理', purchase:'訂貨區', settle:'結算區', events:'建立活動', products:'上架商品' };
 function goto(page) {
   currentPage = page;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -752,6 +790,11 @@ function goto(page) {
   if (page === 'stock' && hasStock) floatEl.className = 'float-save visible';
   else if (page === 'purchase' && hasPurchase) floatEl.className = 'float-save visible';
   else floatEl.className = 'float-save';
+  // 結算區：重設儲存狀態
+  if (page === 'settle') {
+    const hasSettle = Object.keys(settleChanges).length > 0;
+    if (hasSettle) floatEl.className = 'float-save visible';
+  }
 }
 function handleRefresh() { fetchOrders(); }
 
@@ -770,6 +813,7 @@ function renderEventTabs(containerId, mode) {
       if (mode === 'stock') loadProducts(name);
       if (mode === 'product') document.getElementById('prodTargetSheet').value = name;
       if (mode === 'purchase') loadOrderSummary(name);
+      if (mode === 'settle') loadSettleData(name);
     };
     wrap.appendChild(btn);
   });
@@ -1147,6 +1191,7 @@ function updateFloatSave() {
 function saveStockChanges() {
   // 根據當前頁面決定儲存庫存還是訂貨區
   if (currentPage === 'purchase') { savePurchasedChanges(); return; }
+  if (currentPage === 'settle') { saveSettleChanges(); return; }
 
   const count = Object.keys(stockChanges).length;
   if (!count || !currentStockSheet) return;
@@ -1444,9 +1489,9 @@ function applyPurchaseFilter() {
     document.getElementById('floatSave').className = 'float-save';
   }
 
-  // 建立付款狀態數量對照表
+  // 建立付款狀態數量對照表（已付款/未付款篩選都需要）
   const paidQtyMap = {}, unpaidQtyMap = {};
-  if (isViewOnly || purchaseFilter === 'all') {
+  if (isViewOnly) {
     const allOrders = [...allHKOrders, ...allTWOrders].filter(o => o.event === currentPurchaseEvent);
     allOrders.forEach(order => {
       const isPaid = order.status === '已付款' || order.status === '已收款';
@@ -1543,15 +1588,30 @@ function applyPurchaseFilter() {
       if (isViewOnly) {
         // 只讀：不顯示下拉和 checkbox
         const _bought = purchaseChanges.hasOwnProperty(key) ? purchaseChanges[key] : sub.purchased;
-        const remaining = Math.max(0, sub.qty - _bought);
-        const owed = purchaseFilter === 'paid' ? Math.max(0, displayQty - _bought) : 0;
+        const _paidQty   = paidQtyMap[key] || 0;
+        const _unpaidQty = unpaidQtyMap[key] || 0;
         let statusHtml = '';
-        if (owed > 0) {
-          statusHtml = `<span style="font-size:10px; background:#fee2e2; color:#dc2626; font-weight:700; padding:2px 7px; border-radius:4px; grid-column:4/6; text-align:center;">欠 ${owed}</span>`;
-        } else if (remaining === 0 && _bought > 0) {
-          statusHtml = `<span style="font-size:10px; background:#f0fdf4; color:#16a34a; font-weight:700; padding:2px 7px; border-radius:4px; grid-column:4/6; text-align:center;">已買齊</span>`;
-        } else {
-          statusHtml = `<span style="grid-column:4/6;"></span>`;
+
+        if (purchaseFilter === 'paid') {
+          // 已付款：比較 purchased 和 paidQty
+          const excess = _bought - _paidQty;
+          if (excess < 0) {
+            statusHtml = `<span style="font-size:10px;background:#fee2e2;color:#dc2626;font-weight:700;padding:2px 7px;border-radius:4px;grid-column:4/6;text-align:center;">欠 ${Math.abs(excess)}</span>`;
+          } else if (excess === 0) {
+            statusHtml = `<span style="font-size:10px;background:#f0fdf4;color:#16a34a;font-weight:700;padding:2px 7px;border-radius:4px;grid-column:4/6;text-align:center;">已買齊</span>`;
+          } else {
+            statusHtml = `<span style="font-size:10px;background:#f0fdf4;color:#16a34a;font-weight:700;padding:2px 7px;border-radius:4px;grid-column:4/6;text-align:center;">已買齊 ＋多${excess}</span>`;
+          }
+        } else if (purchaseFilter === 'unpaid') {
+          // 未付款：計算已購買中可用於未付款訂單的數量
+          const available = Math.max(0, _bought - _paidQty);
+          if (available === 0) {
+            statusHtml = `<span style="font-size:10px;background:#fee2e2;color:#dc2626;font-weight:700;padding:2px 7px;border-radius:4px;grid-column:4/6;text-align:center;">欠 ${_unpaidQty}</span>`;
+          } else if (available < _unpaidQty) {
+            statusHtml = `<span style="font-size:10px;background:#fef3c7;color:#92400e;font-weight:700;padding:2px 7px;border-radius:4px;grid-column:4/6;text-align:center;">多 ${available} 件</span>`;
+          } else {
+            statusHtml = `<span style="font-size:10px;background:#f0fdf4;color:#16a34a;font-weight:700;padding:2px 7px;border-radius:4px;grid-column:4/6;text-align:center;">已備齊</span>`;
+          }
         }
         row.innerHTML = `
           <span class="osrow-sub">${sub.sub || ''}</span>
@@ -2044,6 +2104,178 @@ function resendPendingEmail(orderId, btn) {
     btn.className = 'resend-btn';
     btn.disabled = false;
     console.error(err);
+  });
+}
+
+// ── 結算區 ──
+let settleData = [];
+let settleChanges = {}; // { "商品名|款式": 已結算數量 }
+let currentSettleEvent = "";
+
+function loadSettleData(eventName) {
+  currentSettleEvent = eventName;
+  settleChanges = {};
+  const contentEl = document.getElementById('settleContent');
+  const grid = document.getElementById('settleGrid');
+  contentEl.style.display = 'none';
+  grid.innerHTML = '<div class="os-empty">載入中...</div>';
+
+  fetch(GAS + '?action=getOrderSummary&event=' + encodeURIComponent(eventName))
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { grid.innerHTML = `<div class="os-empty">❌ ${data.error}</div>`; contentEl.style.display = 'block'; return; }
+      // 只顯示已有購買紀錄的商品（purchased > 0）
+      settleData = (data.items || []).map(p => ({
+        ...p,
+        subs: p.subs.filter(s => s.purchased > 0)
+      })).filter(p => p.subs.length > 0);
+      contentEl.style.display = 'block';
+      renderSettleGrid();
+    })
+    .catch(e => { grid.innerHTML = '<div class="os-empty">❌ 載入失敗，請確認 GAS 已重新部署。</div>'; contentEl.style.display = 'block'; console.error(e); });
+}
+
+function renderSettleGrid() {
+  const grid = document.getElementById('settleGrid');
+  const fallback = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221%22%20height%3D%221%22%3E%3Crect%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23111%22%2F%3E%3C%2Fsvg%3E';
+
+  if (!settleData.length) { grid.innerHTML = '<div class="os-empty">此活動沒有已購買的商品</div>'; updateSettleTotals(); return; }
+  grid.innerHTML = '';
+
+  settleData.forEach(product => {
+    const card = document.createElement('div');
+    card.className = 'oscard';
+    let imgSrc = fallback;
+    for (const sub of product.subs) { if (sub.photo && sub.photo.startsWith('http')) { imgSrc = sub.photo; break; } }
+
+    const totalYen = product.subs.reduce((s, sub) => s + (sub.yenEach || 0) * sub.purchased, 0);
+    const header = document.createElement('div');
+    header.className = 'oscard-header';
+    header.innerHTML = `
+      <img class="oscard-img" src="${imgSrc}" onerror="this.src='${fallback}'" />
+      <div><div class="oscard-name">${product.name}</div>
+      <div style="font-size:11px;color:#aaa;margin-top:3px;">已購 ¥ ${totalYen.toLocaleString()}</div></div>`;
+    card.appendChild(header);
+
+    // 欄標題
+    const headerRow = document.createElement('div');
+    headerRow.className = 'osrow header-row';
+    headerRow.innerHTML = `<span>款式</span><span style="text-align:center;">已購買</span><span style="text-align:center;">已結算</span><span style="text-align:center;">未結算</span><span style="text-align:center;">狀態</span>`;
+    headerRow.style.gridTemplateColumns = '1fr 52px 72px 52px 52px';
+    card.appendChild(headerRow);
+
+    product.subs.forEach(sub => {
+      const key = product.name + '|' + sub.sub;
+      const curSettled = settleChanges.hasOwnProperty(key) ? settleChanges[key] : sub.settled;
+      const unsettled = Math.max(0, sub.purchased - curSettled);
+      const isDone = curSettled >= sub.purchased && sub.purchased > 0;
+
+      // 下拉選項（0 到 已購買數量）
+      let options = `<option value="0"${curSettled===0?' selected':''}>0</option>`;
+      for (let i = 1; i <= sub.purchased; i++) {
+        options += `<option value="${i}"${curSettled===i?' selected':''}>${i}</option>`;
+      }
+
+      const statusHtml = isDone
+        ? `<span style="font-size:10px;background:#f0fdf4;color:#16a34a;font-weight:700;padding:2px 6px;border-radius:4px;">已結算</span>`
+        : (curSettled > 0
+          ? `<span style="font-size:10px;background:#fef3c7;color:#92400e;font-weight:700;padding:2px 6px;border-radius:4px;">部分</span>`
+          : '');
+
+      const row = document.createElement('div');
+      row.className = 'osrow';
+      row.style.gridTemplateColumns = '1fr 52px 72px 52px 52px';
+      row.dataset.key = key;
+      row.innerHTML = `
+        <span class="osrow-sub">${sub.sub || ''}</span>
+        <span class="osrow-qty">${sub.purchased}</span>
+        <span class="osrow-bought">
+          <select class="bought-select${isDone?' done':''}" data-key="${key}" data-max="${sub.purchased}"
+                  onchange="onSettleChange(this)">
+            ${options}
+          </select>
+        </span>
+        <span class="osrow-qty" id="unsettled-${key.replace(/[|]/g,'_')}" style="color:${unsettled>0?'var(--danger)':'#aaa'}">${unsettled}</span>
+        <span style="text-align:center;">${statusHtml}</span>`;
+      card.appendChild(row);
+    });
+    grid.appendChild(card);
+  });
+  updateSettleTotals();
+}
+
+function onSettleChange(sel) {
+  const key = sel.dataset.key;
+  const val = parseInt(sel.value) || 0;
+  const max = parseInt(sel.dataset.max) || 0;
+  settleChanges[key] = val;
+  sel.className = 'bought-select' + (val >= max && max > 0 ? ' done' : '');
+  // 更新未結算欄
+  const unsettledEl = document.getElementById('unsettled-' + key.replace(/[|]/g,'_'));
+  const unsettled = Math.max(0, max - val);
+  if (unsettledEl) { unsettledEl.innerText = unsettled; unsettledEl.style.color = unsettled > 0 ? 'var(--danger)' : '#aaa'; }
+  updateSettleTotals();
+  updateSettleFloatSave();
+}
+
+function settleAll() {
+  if (!confirm(`確定要將「${currentSettleEvent}」所有已購買商品全部標記為已結算嗎？`)) return;
+  document.querySelectorAll('#settleGrid .bought-select').forEach(sel => {
+    sel.value = sel.dataset.max;
+    onSettleChange(sel);
+  });
+}
+
+function updateSettleTotals() {
+  let totalYen = 0, unsettledYen = 0;
+  settleData.forEach(product => {
+    product.subs.forEach(sub => {
+      const key = product.name + '|' + sub.sub;
+      const curSettled = settleChanges.hasOwnProperty(key) ? settleChanges[key] : sub.settled;
+      const yen = sub.yenEach || 0;
+      totalYen     += yen * sub.purchased;
+      unsettledYen += yen * Math.max(0, sub.purchased - curSettled);
+    });
+  });
+  document.getElementById('settleTotalYen').innerText = '¥ ' + totalYen.toLocaleString();
+  document.getElementById('settleUnsettledYen').innerText = '¥ ' + unsettledYen.toLocaleString();
+}
+
+function updateSettleFloatSave() {
+  const count = Object.keys(settleChanges).length;
+  const el = document.getElementById('floatSave');
+  document.getElementById('floatBadge').innerText = `已修改 ${count} 項`;
+  el.className = 'float-save' + (count > 0 && currentPage === 'settle' ? ' visible' : '');
+}
+
+function saveSettleChanges() {
+  const count = Object.keys(settleChanges).length;
+  if (!count) return;
+  if (!confirm(`確定要儲存「${currentSettleEvent}」的 ${count} 項結算紀錄嗎？`)) return;
+  const btn = document.querySelector('.float-btn');
+  btn.innerText = '儲存中...';
+  btn.disabled = true;
+
+  const items = Object.keys(settleChanges).map(key => {
+    const [name, sub] = key.split('|');
+    return { name, sub: sub || '', settled: settleChanges[key] };
+  });
+
+  fetch(GAS, {
+    method: 'POST', mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'saveSettled', eventName: currentSettleEvent, items })
+  }).then(() => {
+    settleChanges = {};
+    updateSettleFloatSave();
+    btn.innerText = '💾 確認儲存';
+    btn.disabled = false;
+    alert(`✅ 已成功儲存 ${items.length} 項結算紀錄！`);
+    loadSettleData(currentSettleEvent);
+  }).catch(err => {
+    alert('❌ 儲存失敗，請重試。');
+    btn.innerText = '💾 確認儲存';
+    btn.disabled = false;
   });
 }
 
