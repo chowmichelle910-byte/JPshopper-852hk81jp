@@ -1577,14 +1577,14 @@ function applyPurchaseFilter() {
     grid.appendChild(card);
   });
 
-  // 計算已購買篩選的總額
+  // 計算已購買篩選的總額：計算所有有購買紀錄的商品（含部分購買）
   if (purchaseFilter === 'bought') {
     grandTotalYen = 0;
     purchaseData.forEach(product => {
       product.subs.forEach(sub => {
         const key = product.name + '|' + sub.sub;
         const curBought = purchaseChanges.hasOwnProperty(key) ? purchaseChanges[key] : sub.purchased;
-        if (curBought >= sub.qty && sub.qty > 0) grandTotalYen += (sub.yenEach || 0) * curBought;
+        if (curBought > 0) grandTotalYen += (sub.yenEach || 0) * curBought;
       });
     });
   }
