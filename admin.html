@@ -1502,7 +1502,10 @@ function applyPurchaseFilter() {
       const curBought = purchaseChanges.hasOwnProperty(key) ? purchaseChanges[key] : sub.purchased;
       const defaultBought = purchaseChanges.hasOwnProperty(key) ? curBought : sub.remaining;
       const isDone = curBought >= sub.qty && sub.qty > 0;
-      const displayQty = Math.max(0, sub.qty - curBought);
+      // 已購買篩選：顯示已購買數量；其他：顯示還需購買數量
+      const displayQty = purchaseFilter === 'bought'
+        ? curBought
+        : Math.max(0, sub.qty - curBought);
       const displayYen = sub.yenEach ? (sub.yenEach * displayQty).toLocaleString() : '0';
       const maxOpt = Math.max(sub.qty, curBought, 10);
       let options = `<option value="0"${defaultBought===0?' selected':''}>0</option>`;
