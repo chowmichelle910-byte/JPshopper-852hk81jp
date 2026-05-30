@@ -519,8 +519,15 @@
               <button class="filter-btn" onclick="setFilter('hk','unpaid',this)">未付款</button>
               <button class="filter-btn" onclick="setFilter('hk','paid',this)">已付款</button>
               <button class="filter-btn" onclick="setFilter('hk','shipped',this)">已寄出</button>
-              <button class="filter-btn" onclick="setFilter('hk','collected',this)">已取貨</button>
+              <button class="filter-btn" onclick="setFilter('hk','cancelled',this)">已取消</button>
             </div>
+          </div>
+          <div style="padding:10px 16px 0; display:flex; gap:8px; align-items:center;">
+            <input id="searchHK" type="text" placeholder="🔍 搜尋姓名 / 電郵 / 手機末3碼..."
+              style="flex:1; padding:7px 11px; border:1px solid var(--border); border-radius:7px; font-size:13px; outline:none;"
+              oninput="applySearch('hk')">
+            <button onclick="document.getElementById('searchHK').value=''; applySearch('hk');"
+              style="font-size:11px; color:var(--muted); background:none; border:none; cursor:pointer; padding:4px;">✕</button>
           </div>
           <div id="loadingHK" class="loading-row" style="padding:30px;">正在載入...</div>
           <div id="wrapHK" style="display:none; padding:16px;">
@@ -539,8 +546,15 @@
               <button class="filter-btn" onclick="setFilter('tw','unpaid',this)">未付款</button>
               <button class="filter-btn" onclick="setFilter('tw','paid',this)">已付款</button>
               <button class="filter-btn" onclick="setFilter('tw','shipped',this)">已寄出</button>
-              <button class="filter-btn" onclick="setFilter('tw','collected',this)">已取貨</button>
+              <button class="filter-btn" onclick="setFilter('tw','cancelled',this)">已取消</button>
             </div>
+          </div>
+          <div style="padding:10px 16px 0; display:flex; gap:8px; align-items:center;">
+            <input id="searchTW" type="text" placeholder="🔍 搜尋姓名 / 電郵 / 手機末3碼..."
+              style="flex:1; padding:7px 11px; border:1px solid var(--border); border-radius:7px; font-size:13px; outline:none;"
+              oninput="applySearch('tw')">
+            <button onclick="document.getElementById('searchTW').value=''; applySearch('tw');"
+              style="font-size:11px; color:var(--muted); background:none; border:none; cursor:pointer; padding:4px;">✕</button>
           </div>
           <div id="loadingTW" class="loading-row" style="padding:30px;">正在載入...</div>
           <div id="wrapTW" style="display:none; padding:16px;">
@@ -1814,7 +1828,7 @@ function applyFilter(region) {
     if (filter === 'unpaid')   return s === '待處理';
     if (filter === 'paid')     return s === '已收款' || s === '已付款';
     if (filter === 'shipped')  return s === '已寄出';
-    if (filter === 'collected')return s === '已取貨';
+    if (filter === 'cancelled')return s === '已取消';
     return true;
   });
 
@@ -1833,12 +1847,28 @@ function applyFilter(region) {
   }
   // 其他篩選維持原本下單時間排序
 
+  // 搜尋過濾（姓名/電郵/手機末3碼，部分符合）
+  const q = (document.getElementById('search' + region.toUpperCase())?.value || '').toLowerCase().trim();
+  if (q) {
+    filtered = filtered.filter(order => {
+      const name  = (order.name  || '').toLowerCase();
+      const email = (order.email || '').toLowerCase();
+      const phone = (order.phone || '').toString();
+      const last3 = phone.length >= 3 ? phone.slice(-3) : phone;
+      return name.includes(q) || email.includes(q) || last3.includes(q) || phone.includes(q);
+    });
+  }
+
   // 更新筆數顯示
   const region_upper = region.toUpperCase();
   const countEl = document.getElementById('count' + region_upper);
   const total = allOrders.length;
   const showing = filtered.length;
-  countEl.innerText = filter === 'all' ? `${total} 筆` : `${showing} / ${total} 筆`;
+  if (q) {
+    countEl.innerText = `搜尋: ${showing} 筆`;
+  } else {
+    countEl.innerText = filter === 'all' ? `${total} 筆` : `${showing} / ${total} 筆`;
+  }
 
   renderOrders(filtered, 'body' + region_upper, region_upper, region);
 }
