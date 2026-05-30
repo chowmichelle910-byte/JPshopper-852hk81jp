@@ -230,6 +230,19 @@
     .modal-confirm-btn { padding: 9px 18px; background: var(--danger); border: none; border-radius: 7px; font-size: 13px; font-weight: 700; cursor: pointer; color: #fff; transition: background 0.15s; }
     .modal-confirm-btn:hover { background: #dc2626; }
     .modal-confirm-btn:disabled { background: #ccc; cursor: not-allowed; }
+    /* 已取消訂單灰布 */
+    .ocard.cancelled-card { position: relative; }
+    .ocard.cancelled-card::after {
+      content: ''; position: absolute; inset: 0;
+      background: rgba(180,180,180,0.45);
+      border-radius: inherit; pointer-events: none; z-index: 5;
+    }
+    .ocard.cancelled-card .ocard-top,
+    .ocard.cancelled-card .ocard-body,
+    .ocard.cancelled-card .ocard-foot { opacity: 0.7; }
+    /* 欠貨標籤 */
+    .owed-badge { display:inline-block; background:#fee2e2; color:#dc2626; font-size:10px; font-weight:700; padding:1px 5px; border-radius:3px; margin-left:4px; vertical-align:middle; }
+
     .cancel-order-btn { padding: 5px 10px; background: none; border: 1px solid #fca5a5; border-radius: 6px; font-size: 11px; font-weight: 600; color: var(--danger); cursor: pointer; transition: all 0.15s; }
     .cancel-order-btn:hover { background: #fff5f5; }
     .resend-btn { padding: 5px 10px; background: none; border: 1px solid var(--border); border-radius: 6px; font-size: 11px; font-weight: 600; color: var(--muted); cursor: pointer; transition: all 0.15s; }
@@ -833,6 +846,63 @@ async function init() {
   await loadSheetList();
   fetchOrders();
   startAdminAutoRefresh();
+  // 載入已購買數量（用於訂單頁面的欠貨顯示）
+  fetch(GAS + '?action=getPurchasedQty')
+    .then(r => r.json())
+    .then(data => { purchasedQtyMap = data || {}; renderAllOrders(); })
+    .catch(e => console.warn('purchasedQtyMap 載入失敗:', e));
+}
+
+// ── 按付款時間分配已購買庫存，計算欠貨 ──
+function computeOwedMap(orders, eventName) {
+  // 只計算已付款訂單，按付款時間升序排列
+  const paid = orders
+    .filter(o => (o.status === '已付款' || o.status === '已收款') && o.event === eventName)
+    .slice()
+    .sort((a, b) => {
+      const ta = a.paymentTime ? new Date(a.paymentTime).getTime() : 0;
+      const tb = b.paymentTime ? new Date(b.paymentTime).getTime() : 0;
+      return ta - tb; // 付款最早的在前
+    });
+
+  // 從 purchasedQtyMap 取得庫存（deep copy）
+  const inventory = {};
+  const eventPurchased = purchasedQtyMap[eventName] || {};
+  for (const key in eventPurchased) {
+    inventory[key] = eventPurchased[key] || 0;
+  }
+
+  // 按順序分配庫存，記錄每筆訂單的欠貨
+  const owedMap = {}; // { orderId: { "name|sub": owedQty } }
+  paid.forEach(order => {
+    const items = parseSummaryFrontend(order.summary || '');
+    const orderOwed = {};
+    items.forEach(item => {
+      const key = item.name + '|' + (item.sub || '');
+      const available = inventory[key] || 0;
+      const fulfilled = Math.min(item.qty, available);
+      const owed = item.qty - fulfilled;
+      inventory[key] = Math.max(0, available - fulfilled);
+      if (owed > 0) orderOwed[key] = owed;
+    });
+    if (Object.keys(orderOwed).length > 0) owedMap[order.id] = orderOwed;
+  });
+  return owedMap;
+}
+
+// 全局 owedMap 快取，按 event 分開
+let owedMapCache = {}; // { "eventName": owedMap }
+
+function getOwedMap(eventName, allOrders) {
+  if (!owedMapCache[eventName]) {
+    owedMapCache[eventName] = computeOwedMap(allOrders, eventName);
+  }
+  return owedMapCache[eventName];
+}
+
+function renderAllOrders() {
+  if (allHKOrders.length) renderOrders(allHKOrders, 'bodyHK', 'HK', 'hk');
+  if (allTWOrders.length) renderOrders(allTWOrders, 'bodyTW', 'TW', 'tw');
 }
 
 function startAdminAutoRefresh() {
@@ -925,6 +995,7 @@ function fetchOrders() {
 
       allHKOrders = hk;
       allTWOrders = tw;
+      owedMapCache = {}; // 清除欠貨快取，重新計算
       applyFilter('hk');
       applyFilter('tw');
     })
@@ -977,15 +1048,27 @@ function renderOrders(orders, bodyId, region, cls) {
       return fallback;
     }
 
+    // 計算此訂單的欠貨
+    let itemOwedMap = {};
+    if (isPaid) {
+      // 失效舊快取（purchasedQtyMap 更新後要重算）
+      const allOrdersForEvent = [...allHKOrders, ...allTWOrders];
+      const owed = getOwedMap(eventName, allOrdersForEvent);
+      itemOwedMap = owed[order.id] || {};
+    }
+
     let itemsHtml = '';
     parsedItems.forEach(item => {
       const subText = item.sub ? ` <span style="color:var(--muted);font-weight:400;">(${item.sub})</span>` : '';
       const imgSrc = getItemPhoto(item.name);
+      const owedKey = item.name + '|' + (item.sub || '');
+      const owedQty = itemOwedMap[owedKey] || 0;
+      const owedBadge = owedQty > 0 ? `<span class="owed-badge">欠${owedQty}</span>` : '';
       itemsHtml += `
         <div class="ocard-item">
           <img class="ocard-item-img" src="${imgSrc}" onerror="this.src='${fallback}'" />
           <div class="ocard-item-info">
-            <div class="ocard-item-name">${item.name}${subText}</div>
+            <div class="ocard-item-name">${item.name}${subText}${owedBadge}</div>
           </div>
           <div class="ocard-item-price">× ${item.qty}</div>
         </div>`;
@@ -1014,7 +1097,8 @@ function renderOrders(orders, bodyId, region, cls) {
     }
 
     const card = document.createElement('div');
-    card.className = `ocard${overdue ? ' overdue-card' : ''}`;
+    const isCancelled = order.status === '已取消';
+    card.className = `ocard${overdue ? ' overdue-card' : ''}${isCancelled ? ' cancelled-card' : ''}`;
     card.dataset.orderId  = order.id;
     card.dataset.region   = cls;
     card.dataset.order    = encodeURIComponent(JSON.stringify({
@@ -1351,6 +1435,7 @@ function savePurchasedChanges() {
 }
 
 // ── 訂貨區 ──
+let purchasedQtyMap = {};   // { "eventName": { "name|sub": purchasedQty } }
 let purchaseData = [];      // 當前載入的訂貨摘要
 let purchaseChanges = {};   // { "商品名|款式": 已購買數量 }
 let currentPurchaseEvent = "";
