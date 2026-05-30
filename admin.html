@@ -233,6 +233,9 @@
     .cancel-order-btn { padding: 5px 10px; background: none; border: 1px solid #fca5a5; border-radius: 6px; font-size: 11px; font-weight: 600; color: var(--danger); cursor: pointer; transition: all 0.15s; }
     .cancel-order-btn:hover { background: #fff5f5; }
     .resend-btn { padding: 5px 10px; background: none; border: 1px solid var(--border); border-radius: 6px; font-size: 11px; font-weight: 600; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+    .reminder-btn { padding: 5px 10px; background: none; border: 1px solid #fde68a; border-radius: 6px; font-size: 11px; font-weight: 600; color: #92400e; cursor: pointer; transition: all 0.15s; }
+    .reminder-btn:hover { background: #fffbeb; }
+    .reminder-btn.sent { border-color: var(--success); color: var(--success); }
     .resend-btn:hover { border-color: var(--ink); color: var(--ink); }
     .resend-btn.sending { opacity: 0.6; cursor: not-allowed; }
     .resend-btn.sent { border-color: var(--success); color: var(--success); }
@@ -1001,6 +1004,7 @@ function renderOrders(orders, bodyId, region, cls) {
         <div style="display:flex; gap:6px; align-items:center;">
           <button class="edit-order-btn" data-oid="${order.id}" onclick="toggleEditMode(this.dataset.oid)">✏️ 編輯</button>
           <button class="resend-btn" data-oid="${order.id}" onclick="resendPendingEmail(this.dataset.oid, this)">重發確認信</button>
+          ${!isPaid ? `<button class="reminder-btn" data-oid="${order.id}" onclick="sendManualReminder(this.dataset.oid, this)">⚠️ 催款</button>` : ''}
           <button class="cancel-order-btn" data-oid="${order.id}" data-sum="${encodeURIComponent(order.summary || '')}" onclick="openCancelModal(this.dataset.oid, decodeURIComponent(this.dataset.sum))">取消訂單</button>
           <button id="btn-${order.id}" class="ocard-status-btn ${isPaid ? 'paid' : 'unpaid'}"
             ${isPaid ? 'disabled' : `onclick="confirmPayment('${order.id}')"`}>
@@ -2132,6 +2136,29 @@ function saveOrderEdit(orderId, card) {
     saveBtn.innerText = '💾 儲存修改';
     saveBtn.disabled = false;
     console.error(err);
+  });
+}
+
+function sendManualReminder(orderId, btn) {
+  if (!confirm('確定要手動發送催款通知給訂單 ' + orderId + ' 嗎？')) return;
+  btn.innerText = '發送中...';
+  btn.disabled = true;
+  fetch(GAS, {
+    method: 'POST', mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'sendManualReminder', orderId })
+  }).then(() => {
+    btn.innerText = '✓ 已發送';
+    btn.className = 'reminder-btn sent';
+    btn.disabled = false;
+    setTimeout(() => {
+      btn.innerText = '⚠️ 催款';
+      btn.className = 'reminder-btn';
+    }, 3000);
+  }).catch(err => {
+    alert('❌ 發送失敗，請重試。');
+    btn.innerText = '⚠️ 催款';
+    btn.disabled = false;
   });
 }
 
