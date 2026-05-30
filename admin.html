@@ -572,7 +572,10 @@
         <div class="card">
           <div class="card-title" style="display:flex; align-items:center; justify-content:space-between;">
             <span><span>🛒</span> 選擇活動</span>
-            <button class="topbar-btn" onclick="currentStockSheet && loadOrderSummary(currentPurchaseEvent)" style="font-size:11px; padding:4px 10px;">🔄 重新整理</button>
+            <div style="display:flex; gap:6px;">
+              <button class="topbar-btn" id="syncPurchaseBtn" onclick="syncPurchaseRecord()" style="font-size:11px; padding:4px 10px; border-color:#f59e0b; color:#92400e;" title="從訂單紀錄重新同步 E/F 欄">⚡ 同步</button>
+              <button class="topbar-btn" onclick="currentStockSheet && loadOrderSummary(currentPurchaseEvent)" style="font-size:11px; padding:4px 10px;">🔄 重新整理</button>
+            </div>
           </div>
           <div class="event-tabs" id="eventTabsPurchase">
             <div style="color:#bbb; font-size:13px;">載入中...</div>
@@ -1338,6 +1341,26 @@ let purchaseData = [];      // 當前載入的訂貨摘要
 let purchaseChanges = {};   // { "商品名|款式": 已購買數量 }
 let currentPurchaseEvent = "";
 let purchaseFilter = 'all'; // all / paid / unpaid / bought / unbought
+
+function syncPurchaseRecord() {
+  if (!currentPurchaseEvent) { alert('請先選擇活動'); return; }
+  const btn = document.getElementById('syncPurchaseBtn');
+  btn.innerText = '同步中...';
+  btn.disabled = true;
+  fetch(GAS + '?action=syncPurchaseRecord&event=' + encodeURIComponent(currentPurchaseEvent))
+    .then(r => r.json())
+    .then(data => {
+      btn.innerText = '✓ 已同步';
+      btn.disabled = false;
+      setTimeout(() => { btn.innerText = '⚡ 同步'; }, 3000);
+      loadOrderSummary(currentPurchaseEvent); // 重新載入
+    })
+    .catch(e => {
+      alert('❌ 同步失敗');
+      btn.innerText = '⚡ 同步';
+      btn.disabled = false;
+    });
+}
 
 function loadOrderSummary(eventName) {
   currentPurchaseEvent = eventName;
