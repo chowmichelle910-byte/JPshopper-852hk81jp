@@ -49,6 +49,13 @@
     .countdown-wrap.urgent .countdown-num { color: #c0392b; }
     .countdown-wrap.urgent { background: #fff5f5; border-color: #fca5a5; }
     .countdown-expired { font-size: 13px; color: #c0392b; font-weight: 600; }
+    .email-typo-warn {
+      font-size: 11px; color: #d97706; font-weight: 600;
+      margin-top: 4px; padding: 4px 8px;
+      background: #fffbeb; border: 1px solid #fde68a;
+      border-radius: 5px; display: flex; align-items: center; gap: 6px;
+    }
+    .email-typo-fix { cursor: pointer; color: #0284c7; text-decoration: underline; font-weight: 700; }
   </style>
 </head>
 <body class="min-h-screen pb-64" x-data="shopApp()" x-init="init()">
@@ -207,7 +214,17 @@
         </div>
         <div>
           <label class="block text-xs mb-1" style="color:#888;">電子郵件 *</label>
-          <input type="email" x-model="form.email" placeholder="請輸入電郵地址" class="w-full jp-input px-3 py-2 text-sm" :disabled="isClosed">
+          <input type="email" x-model="form.email"
+                 placeholder="請輸入電郵地址"
+                 class="w-full jp-input px-3 py-2 text-sm"
+                 :disabled="isClosed"
+                 @input="checkEmailTypo()">
+          <div x-show="emailTypoWarn" class="email-typo-warn">
+            ⚠️ 係咪打錯？建議改為
+            <span class="email-typo-fix" @click="applyEmailFix()">
+              <span x-text="emailTypoSuggestion"></span>
+            </span>
+          </div>
         </div>
       </div>
 
@@ -372,6 +389,8 @@ function shopApp() {
     cart: {},
     deadline: '',
     orderedQty: {},
+    emailTypoWarn: false,
+    emailTypoSuggestion: '',
     countdownText: null,
     countdownD: '00', countdownH: '00', countdownM: '00', countdownS: '00',
     countdownUrgent: false,
@@ -411,6 +430,51 @@ function shopApp() {
       finally { this.loading = false; }
       // 啟動倒數計時
       if (this.deadline) this.startCountdown();
+      this.startAutoRefresh();
+    },
+
+    checkEmailTypo() {
+      const email = this.form.email.toLowerCase();
+      const typos = ['.con','.cmo','.ocm','.vom','.xom','.cpm',
+                     '.gmai.com','.gamil.com','.yaho.com','.outlok.com'];
+      const fixes  = ['.com','.com','.com','.com','.com','.com',
+                      '.gmail.com','.gmail.com','.yahoo.com','.outlook.com'];
+      for (let i = 0; i < typos.length; i++) {
+        if (email.endsWith(typos[i])) {
+          this.emailTypoSuggestion = this.form.email.slice(0, -typos[i].length) + fixes[i];
+          this.emailTypoWarn = true;
+          return;
+        }
+      }
+      this.emailTypoWarn = false;
+      this.emailTypoSuggestion = '';
+    },
+
+    applyEmailFix() {
+      this.form.email = this.emailTypoSuggestion;
+      this.emailTypoWarn = false;
+      this.emailTypoSuggestion = '';
+    },
+
+    startAutoRefresh() {
+      // 每 60 秒靜默重新拉取庫存狀態（不影響表單和購物車）
+      setInterval(async () => {
+        if (!this.sheetEventName || this.submitting) return;
+        try {
+          const res = await fetch(`${GAS_API_URL}?action=getItems&event=${encodeURIComponent(this.sheetEventName)}&t=${Date.now()}`);
+          const data = await res.json();
+          // 只更新庫存，不重置表單
+          if (data.products) {
+            this.products = data.products;
+          }
+          if (data.orderedQty) {
+            this.orderedQty = data.orderedQty;
+          }
+          if (data.deadline) {
+            this.deadline = data.deadline;
+          }
+        } catch(e) { /* 靜默失敗，不打擾客人 */ }
+      }, 60000);
     },
 
     startCountdown() {
@@ -506,7 +570,11 @@ function shopApp() {
 
     async submitOrder() {
       if (this.isClosed) { alert('此活動已截止收單。'); return; }
-      if (this.cartItems.length===0 || !this.form.name.trim() || !/^\d{8}$/.test(this.form.phone) || !this.form.email.trim() || this.selectedAddressIndex==='') {
+      this.checkEmailTypo();
+      if (this.emailTypoWarn) {
+        if (!confirm(`電郵地址可能有錯字（${this.form.email}），建議改為 ${this.emailTypoSuggestion}。\n確定要繼續使用原本的地址提交嗎？`)) return;
+      }
+      if (this.cart.length===0 || !this.form.name.trim() || !this.form.phone.trim() || !this.form.email.trim()) {
         alert('請確認所有必填欄位（姓名、電話、電郵、收件地址）及已勾選商品。'); return;
       }
       this.submitting = true;
