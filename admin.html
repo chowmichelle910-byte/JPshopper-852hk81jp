@@ -2454,26 +2454,29 @@ function renderProfitPage() {
 
   items.forEach(item => {
     const costProp = totalYen > 0 ? totalCost * item.yenTotal / totalYen : 0;
-    const hkRevHKD = item.hkdPrice * item.hkQty;
-    const twRevHKD = rate > 0 ? (item.twdPrice / rate) * item.twQty : 0;
-    const profit   = hkRevHKD + twRevHKD - costProp;
+
+    // ── 已結算數量分配（HK 優先，再分 TW）──
+    const settledQty  = item.qty;
+    const hkSettled   = Math.min(item.hkQty, settledQty);
+    const twSettled   = Math.min(item.twQty, Math.max(0, settledQty - item.hkQty));
+
+    // 收入基於已結算數量，而非全部訂單數量
+    const hkRevHKD  = item.hkdPrice * hkSettled;
+    const twRevHKD  = rate > 0 ? (item.twdPrice / rate) * twSettled : 0;
+    const profit    = hkRevHKD + twRevHKD - costProp;
     totalHKRev  += hkRevHKD;
     totalTWRev  += twRevHKD;
     totalProfit += profit;
 
-    // ── 計算未購買部分 ──
-    const totalOrderQty = item.hkQty + item.twQty;
-    const settledQty    = item.qty;
-    const unsettled     = Math.max(0, totalOrderQty - settledQty);
-    // 分配：先覆蓋 HK，再覆蓋 TW
-    const hkCovered     = Math.min(item.hkQty, settledQty);
-    const twCovered     = Math.min(item.twQty, Math.max(0, settledQty - item.hkQty));
-    const unsettledHKQty = item.hkQty - hkCovered;
-    const unsettledTWQty = item.twQty - twCovered;
-    const unsettledHKD  = unsettledHKQty * item.hkdPrice;
-    const unsettledNTD  = unsettledTWQty * item.twdPrice;
-    totalUnsettledHKD  += unsettledHKD;
-    totalUnsettledNTD  += unsettledNTD;
+    // ── 未購買部分（已付款但尚未結算）──
+    const totalOrderQty  = item.hkQty + item.twQty;
+    const unsettled      = Math.max(0, totalOrderQty - settledQty);
+    const unsettledHKQty = item.hkQty - hkSettled;
+    const unsettledTWQty = item.twQty - twSettled;
+    const unsettledHKD   = unsettledHKQty * item.hkdPrice;
+    const unsettledNTD   = unsettledTWQty * item.twdPrice;
+    totalUnsettledHKD   += unsettledHKD;
+    totalUnsettledNTD   += unsettledNTD;
 
     const imgSrc = item.photo && item.photo.startsWith('http') ? item.photo : fallback;
     const costPerUnit = item.qty > 0 ? costProp / item.qty : 0;
@@ -2497,14 +2500,14 @@ function renderProfitPage() {
       </div>
       <div style="padding:10px 14px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; font-size:12px; border-top:1px solid var(--border);">
         <div>
-          <div style="color:var(--muted); font-size:10px; margin-bottom:3px;">HK 收入（${item.hkQty}件）</div>
+          <div style="color:var(--muted); font-size:10px; margin-bottom:3px;">HK 收入（結算${hkSettled}件）</div>
           <div style="font-weight:600; color:var(--hk);">HK$ ${hkRevHKD.toFixed(1)}</div>
-          <div style="color:#aaa; font-size:10px;">@HK$${item.hkdPrice}/件</div>
+          <div style="color:#aaa; font-size:10px;">@HK$${item.hkdPrice}/件${item.hkQty > hkSettled ? ' ⚠️未結算' + (item.hkQty - hkSettled) + '件' : ''}</div>
         </div>
         <div>
-          <div style="color:var(--muted); font-size:10px; margin-bottom:3px;">TW 收入（${item.twQty}件）</div>
+          <div style="color:var(--muted); font-size:10px; margin-bottom:3px;">TW 收入（結算${twSettled}件）</div>
           <div style="font-weight:600; color:var(--tw);">HK$ ${twRevHKD.toFixed(1)}</div>
-          <div style="color:#aaa; font-size:10px;">NT$${item.twdPrice} ÷ ${rate}</div>
+          <div style="color:#aaa; font-size:10px;">NT$${item.twdPrice}÷${rate}${item.twQty > twSettled ? ' ⚠️未結算' + (item.twQty - twSettled) + '件' : ''}</div>
         </div>
         <div>
           <div style="color:var(--muted); font-size:10px; margin-bottom:3px;">比例成本</div>
