@@ -1691,10 +1691,10 @@ function applyPurchaseFilter() {
       } else {
         // 可編輯模式（全部/已購買/未購買）
         // 「未購買」的下拉上限是 paidQty（不扣已購買）
-        const maxOpt   = purchaseFilter === 'unbought' ? paidQty : Math.max(paidQty, curBought, 10);
-        // 「未購買」預設顯示 remaining（還需買），其他頁面用 curBought 或 sub.remaining
+        // 「未購買」：上限和預設都是 remaining（還需買數量）
+        const maxOpt   = purchaseFilter === 'unbought' ? remaining : Math.max(paidQty, curBought, 10);
         const defBought = purchaseChanges.hasOwnProperty(key)
-          ? curBought
+          ? Math.min(curBought, purchaseFilter === 'unbought' ? remaining : curBought)
           : (purchaseFilter === 'unbought' ? remaining : sub.remaining);
         let options = `<option value="0"${defBought===0?' selected':''}>0</option>`;
         for (let i = 1; i <= maxOpt; i++) {
@@ -1714,7 +1714,9 @@ function applyPurchaseFilter() {
             </select>
           </span>
           <span class="osrow-check">
-            <input type="checkbox" class="os-check" data-key="${key}" data-qty="${paidQty}" ${isDone?'checked':''} onchange="onCheckChange(this)">
+            <input type="checkbox" class="os-check" data-key="${key}"
+              data-qty="${purchaseFilter === 'unbought' ? remaining : paidQty}"
+              ${isDone?'checked':''} onchange="onCheckChange(this)">
           </span>`;
       }
       card.appendChild(row);
