@@ -815,6 +815,16 @@ document.getElementById('pwInput').addEventListener('keydown', e => { if (e.key 
 async function init() {
   await loadSheetList();
   fetchOrders();
+  startAdminAutoRefresh();
+}
+
+function startAdminAutoRefresh() {
+  setInterval(() => {
+    // 只在訂單頁自動重新整理，其他頁面不打擾
+    if (currentPage === 'orders') {
+      fetchOrders();
+    }
+  }, 120000); // 每 120 秒
 }
 
 async function loadSheetList() {
