@@ -1591,7 +1591,7 @@ function applyPurchaseFilter() {
       if (purchaseFilter === 'paid')    return paidQty > 0;                           // 有已付款訂單
       if (purchaseFilter === 'unpaid')  return unpaidQty > 0;                         // 有未付款訂單
       if (purchaseFilter === 'bought')  return curBought > 0;                          // 購貨紀錄 E欄 > 0
-      if (purchaseFilter === 'unbought')return paidQty > 0;                           // 有已付款訂單（不管已買多少，下拉可設定）
+      if (purchaseFilter === 'unbought')return paidQty > curBought && paidQty > 0;   // 已付款中還需購買（還需買>0才顯示）
       return true;
     });
     if (!visibleSubs.length) return;
