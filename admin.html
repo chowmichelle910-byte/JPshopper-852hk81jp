@@ -471,6 +471,9 @@
       <div class="nav-item" onclick="goto('settle'); closeSidebar();" id="nav-settle">
         <span class="nav-icon">💵</span> 結算區
       </div>
+      <div class="nav-item" onclick="goto('profit'); closeSidebar();" id="nav-profit">
+        <span class="nav-icon">📈</span> 盈利計算
+      </div>
 
       <div class="nav-section-label">活動管理</div>
       <div class="nav-item" onclick="goto('events'); closeSidebar();" id="nav-events">
@@ -633,6 +636,34 @@
         </div>
       </div>
 
+      <!-- ════ PAGE: 盈利計算 ════ -->
+      <div class="page" id="page-profit">
+        <div class="card">
+          <div class="card-title" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+            <span><span>📈</span> 選擇活動</span>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <label style="font-size:11px; color:var(--muted);">TWD 匯率</label>
+              <input type="number" id="profitTwdRate" value="3.97" step="0.01"
+                     style="width:64px; padding:4px 7px; border:1px solid var(--border); border-radius:5px; font-size:12px;"
+                     onchange="profitData && renderProfitPage()">
+              <button class="topbar-btn" onclick="currentProfitEvent && loadProfitData(currentProfitEvent)" style="font-size:11px; padding:4px 10px;">🔄</button>
+            </div>
+          </div>
+          <div class="event-tabs" id="eventTabsProfit">
+            <div style="color:#bbb; font-size:13px;">載入中...</div>
+          </div>
+        </div>
+
+        <div id="profitContent" style="display:none;">
+          <!-- 摘要 -->
+          <div class="os-total-bar" id="profitSummary" style="flex-direction:column; gap:8px;"></div>
+          <!-- 商品明細 -->
+          <div id="profitGrid" style="margin-top:16px;"></div>
+          <!-- 總結 -->
+          <div id="profitFooter" style="margin-top:16px;"></div>
+        </div>
+      </div>
+
       <!-- ════ PAGE: 建立活動 ════ -->
       <div class="page" id="page-events">
         <div class="card" style="max-width: 480px;">
@@ -696,6 +727,27 @@
     </div><!-- /content -->
   </div><!-- /main -->
 </div><!-- /adminApp -->
+
+<!-- 結算成本輸入彈窗 -->
+<div class="modal-overlay" id="settleCostModal" style="display:none;">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-title">輸入港幣總成本</div>
+    <div class="modal-subtitle" id="settleCostYen" style="font-size:13px; color:var(--muted); margin-bottom:16px;"></div>
+    <div class="form-field">
+      <label class="form-label">此次結算的港幣總成本（HK$）</label>
+      <input type="number" id="settleCostInput" placeholder="例如：1500"
+             style="font-size:16px; padding:10px;"
+             onkeydown="if(event.key==='Enter') confirmSettleAll()">
+    </div>
+    <div style="font-size:11px; color:var(--muted); margin-bottom:16px;">
+      系統會按各商品日幣佔比分攤此成本
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel-btn" onclick="closeSettleCostModal()">取消</button>
+      <button class="modal-confirm-btn" onclick="confirmSettleAll()">確認並全部標記已結算</button>
+    </div>
+  </div>
+</div>
 
 <!-- 取消訂單彈窗 -->
 <div class="modal-overlay" id="cancelModal" style="display:none;">
@@ -770,11 +822,12 @@ async function loadSheetList() {
     renderEventTabs('eventTabsProduct', 'product');
     renderEventTabs('eventTabsPurchase', 'purchase');
     renderEventTabs('eventTabsSettle', 'settle');
+    renderEventTabs('eventTabsProfit', 'profit');
   } catch(e) { console.error(e); }
 }
 
 // ── Navigation ──
-const pageTitles = { orders:'所有訂單', stock:'庫存管理', purchase:'訂貨區', settle:'結算區', events:'建立活動', products:'上架商品' };
+const pageTitles = { orders:'所有訂單', stock:'庫存管理', purchase:'訂貨區', settle:'結算區', profit:'盈利計算', events:'建立活動', products:'上架商品' };
 function goto(page) {
   currentPage = page;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -814,6 +867,7 @@ function renderEventTabs(containerId, mode) {
       if (mode === 'product') document.getElementById('prodTargetSheet').value = name;
       if (mode === 'purchase') loadOrderSummary(name);
       if (mode === 'settle') loadSettleData(name);
+      if (mode === 'profit') loadProfitData(name);
     };
     wrap.appendChild(btn);
   });
@@ -2111,6 +2165,7 @@ function resendPendingEmail(orderId, btn) {
 let settleData = [];
 let settleChanges = {}; // { "商品名|款式": 已結算數量 }
 let currentSettleEvent = "";
+let settleHKDCost = 0;  // 本次結算港幣總成本
 
 function loadSettleData(eventName) {
   currentSettleEvent = eventName;
@@ -2219,11 +2274,35 @@ function onSettleChange(sel) {
 }
 
 function settleAll() {
-  if (!confirm(`確定要將「${currentSettleEvent}」所有已購買商品全部標記為已結算嗎？`)) return;
+  const totalPurchasedYen = settleData.reduce((s, p) =>
+    s + p.subs.reduce((ss, sub) => ss + (sub.yenEach || 0) * sub.purchased, 0), 0);
+
+  // 顯示結算彈窗
+  document.getElementById('settleCostModal').style.display = 'flex';
+  document.getElementById('settleCostYen').innerText = '¥ ' + totalPurchasedYen.toLocaleString();
+  document.getElementById('settleCostInput').value = '';
+  document.getElementById('settleCostInput').focus();
+}
+
+function confirmSettleAll() {
+  const costInput = document.getElementById('settleCostInput').value.trim();
+  const cost = parseFloat(costInput);
+  if (!costInput || isNaN(cost) || cost <= 0) {
+    alert('請輸入有效的港幣總成本！');
+    return;
+  }
+  settleHKDCost = cost;
+  document.getElementById('settleCostModal').style.display = 'none';
+
+  // 標記全部已結算
   document.querySelectorAll('#settleGrid .bought-select').forEach(sel => {
     sel.value = sel.dataset.max;
     onSettleChange(sel);
   });
+}
+
+function closeSettleCostModal() {
+  document.getElementById('settleCostModal').style.display = 'none';
 }
 
 function updateSettleTotals() {
@@ -2261,12 +2340,24 @@ function saveSettleChanges() {
     return { name, sub: sub || '', settled: settleChanges[key] };
   });
 
+  const twdRateVal = parseFloat(document.getElementById('profitTwdRate')?.value) || 3.97;
+
   fetch(GAS, {
     method: 'POST', mode: 'no-cors',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action: 'saveSettled', eventName: currentSettleEvent, items })
   }).then(() => {
+    // 同時儲存港幣總成本到盈利紀錄
+    if (settleHKDCost > 0) {
+      fetch(GAS, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'saveProfitCost', eventName: currentSettleEvent,
+                               totalCost: settleHKDCost, twdRate: twdRateVal })
+      });
+    }
     settleChanges = {};
+    settleHKDCost = 0;
     updateSettleFloatSave();
     btn.innerText = '💾 確認儲存';
     btn.disabled = false;
@@ -2277,6 +2368,152 @@ function saveSettleChanges() {
     btn.innerText = '💾 確認儲存';
     btn.disabled = false;
   });
+}
+
+// ── 盈利計算 ──
+let profitData = null;
+let currentProfitEvent = "";
+
+function loadProfitData(eventName) {
+  currentProfitEvent = eventName;
+  const contentEl = document.getElementById('profitContent');
+  const grid = document.getElementById('profitGrid');
+  contentEl.style.display = 'none';
+  grid.innerHTML = '<div class="os-empty">載入中...</div>';
+  contentEl.style.display = 'block';
+
+  fetch(GAS + '?action=getProfitData&event=' + encodeURIComponent(eventName))
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) { grid.innerHTML = `<div class="os-empty">❌ ${data.error}</div>`; return; }
+      profitData = data;
+      // 同步匯率到輸入框
+      if (data.twdRate) document.getElementById('profitTwdRate').value = data.twdRate;
+      renderProfitPage();
+    })
+    .catch(e => { grid.innerHTML = '<div class="os-empty">❌ 載入失敗</div>'; console.error(e); });
+}
+
+function renderProfitPage() {
+  if (!profitData) return;
+  const rate = parseFloat(document.getElementById('profitTwdRate').value) || 3.97;
+  const fallback = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221%22%20height%3D%221%22%3E%3Crect%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23111%22%2F%3E%3C%2Fsvg%3E';
+  const totalCost = profitData.totalCost || 0;
+  const items = profitData.items || [];
+
+  if (!items.length) {
+    document.getElementById('profitGrid').innerHTML = '<div class="os-empty">此活動沒有已結算商品，請先在結算區完成結算。</div>';
+    document.getElementById('profitSummary').innerHTML = '';
+    document.getElementById('profitFooter').innerHTML = '';
+    return;
+  }
+
+  // 重新計算（匯率可能已修改）
+  const totalYen = items.reduce((s, i) => s + i.yenTotal, 0);
+  let totalProfit = 0, totalHKRev = 0, totalTWRev = 0;
+
+  // 摘要列
+  document.getElementById('profitSummary').innerHTML = `
+    <div style="display:flex; justify-content:space-between;">
+      <span>📊 日幣總額</span><strong>¥ ${totalYen.toLocaleString()}</strong>
+    </div>
+    <div style="display:flex; justify-content:space-between;">
+      <span>💸 港幣總成本</span><strong style="color:var(--danger);">HK$ ${totalCost.toLocaleString()}</strong>
+    </div>
+    ${profitData.settleDate ? `<div style="font-size:11px; color:var(--muted);">結算日期：${profitData.settleDate}</div>` : ''}`;
+
+  // 商品卡片
+  const grid = document.getElementById('profitGrid');
+  grid.innerHTML = '';
+
+  items.forEach(item => {
+    const costProp  = totalYen > 0 ? totalCost * item.yenTotal / totalYen : 0;
+    const twRevHKD  = rate > 0 ? (item.twdPrice / rate) * item.twQty : 0;
+    const hkRevHKD  = item.hkdPrice * item.hkQty;
+    const profit    = hkRevHKD + twRevHKD - costProp;
+    totalHKRev  += hkRevHKD;
+    totalTWRev  += twRevHKD;
+    totalProfit += profit;
+
+    const costPerUnit  = item.qty > 0 ? costProp / item.qty : 0;
+    const hkCostJpy   = costPerUnit > 0 && profitData.twdRate > 0 ? Math.round(costPerUnit / item.yenEach * 1000) / 1000 : null;
+    const twRateNote  = item.twdPrice > 0 ? `NT$${item.twdPrice} ÷ ${rate} = HK$${(item.twdPrice/rate).toFixed(2)}` : null;
+
+    const imgSrc = item.photo && item.photo.startsWith('http') ? item.photo : fallback;
+
+    const card = document.createElement('div');
+    card.className = 'oscard';
+    card.style.marginBottom = '10px';
+    card.innerHTML = `
+      <div class="oscard-header">
+        <img class="oscard-img" src="${imgSrc}" onerror="this.src='${fallback}'" />
+        <div style="flex:1; min-width:0;">
+          <div class="oscard-name">${item.name}${item.sub ? ' (' + item.sub + ')' : ''}</div>
+          <div style="font-size:11px; color:#aaa; margin-top:2px;">已結算 ${item.qty} 件 · ¥${item.yenTotal.toLocaleString()}</div>
+        </div>
+        <div style="text-align:right; flex-shrink:0;">
+          <div style="font-size:14px; font-weight:800; color:${profit >= 0 ? 'var(--success)' : 'var(--danger)'};">
+            ${profit >= 0 ? '+' : ''}HK$ ${profit.toFixed(1)}
+          </div>
+          <div style="font-size:10px; color:#aaa;">賺（合並）</div>
+        </div>
+      </div>
+      <div style="padding:10px 14px; display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:8px; font-size:12px; border-top:1px solid var(--border);">
+        <div>
+          <div style="color:var(--muted); font-size:10px; margin-bottom:3px;">港幣代購價</div>
+          <div style="font-weight:600;">HK$ ${item.hkdPrice}</div>
+          ${costPerUnit > 0 ? `<div style="color:#aaa; font-size:10px;">(原價 HK$${costPerUnit.toFixed(1)})</div>` : ''}
+        </div>
+        <div>
+          <div style="color:var(--muted); font-size:10px; margin-bottom:3px;">台幣代購價</div>
+          <div style="font-weight:600;">NT$ ${item.twdPrice}</div>
+          ${twRateNote ? `<div style="color:#aaa; font-size:10px;">(≈HK$${(item.twdPrice/rate).toFixed(1)})</div>` : ''}
+        </div>
+        <div>
+          <div style="color:var(--muted); font-size:10px; margin-bottom:3px;">HK 收入</div>
+          <div style="font-weight:600; color:var(--hk);">HK$ ${hkRevHKD.toFixed(1)}</div>
+          <div style="color:#aaa; font-size:10px;">${item.hkQty} 件</div>
+        </div>
+        <div>
+          <div style="color:var(--muted); font-size:10px; margin-bottom:3px;">TW 收入</div>
+          <div style="font-weight:600; color:var(--tw);">HK$ ${twRevHKD.toFixed(1)}</div>
+          <div style="color:#aaa; font-size:10px;">${item.twQty} 件</div>
+        </div>
+      </div>`;
+    grid.appendChild(card);
+  });
+
+  // 總結
+  const perPerson = totalProfit / 2;
+  document.getElementById('profitFooter').innerHTML = `
+    <div style="background:#111; color:#fff; border-radius:12px; padding:20px; margin-top:8px;">
+      <div style="font-size:13px; color:#888; margin-bottom:12px; letter-spacing:1px; text-transform:uppercase;">盈利總結</div>
+      <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+        <span style="color:#aaa;">HK 總收入</span>
+        <span style="color:#ff8080;">HK$ ${totalHKRev.toFixed(1)}</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+        <span style="color:#aaa;">TW 總收入（折HKD）</span>
+        <span style="color:#80b8e0;">HK$ ${totalTWRev.toFixed(1)}</span>
+      </div>
+      <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+        <span style="color:#aaa;">港幣總成本</span>
+        <span style="color:#ff6060;">- HK$ ${totalCost.toFixed(1)}</span>
+      </div>
+      <div style="border-top:1px solid #333; margin:12px 0;"></div>
+      <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+        <span style="font-size:15px; font-weight:700;">總盈利</span>
+        <span style="font-size:18px; font-weight:800; color:${totalProfit >= 0 ? '#4ade80' : '#f87171'};">
+          ${totalProfit >= 0 ? '+' : ''}HK$ ${totalProfit.toFixed(1)}
+        </span>
+      </div>
+      <div style="display:flex; justify-content:space-between;">
+        <span style="font-size:13px; color:#888;">兩人平均</span>
+        <span style="font-size:15px; font-weight:700; color:${perPerson >= 0 ? '#86efac' : '#fca5a5'};">
+          各 HK$ ${perPerson.toFixed(1)}
+        </span>
+      </div>
+    </div>`;
 }
 
 function saveShipmentRef(orderId, btn) {
