@@ -1567,8 +1567,8 @@ function applyPurchaseFilter() {
       if (purchaseFilter === 'all')     return allQty > 0;                            // 所有訂單（含未付款）
       if (purchaseFilter === 'paid')    return paidQty > 0;                           // 有已付款訂單
       if (purchaseFilter === 'unpaid')  return unpaidQty > 0;                         // 有未付款訂單
-      if (purchaseFilter === 'bought')  return curBought >= paidQty && paidQty > 0;   // 完全買齊
-      if (purchaseFilter === 'unbought')return paidQty > curBought && paidQty > 0;    // 已付款中尚未買齊（含完全未買和部分已買）
+      if (purchaseFilter === 'bought')  return curBought > 0;                          // 購貨紀錄 E欄 > 0
+      if (purchaseFilter === 'unbought')return paidQty > 0;                           // 有已付款訂單（不管已買多少，下拉可設定）
       return true;
     });
     if (!visibleSubs.length) return;
