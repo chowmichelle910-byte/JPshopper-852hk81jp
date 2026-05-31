@@ -624,6 +624,8 @@
           <div class="os-select-all-row" id="purchaseBulkActions">
             <button class="os-select-all-btn" onclick="selectAllVisible()">✅ 全部標記為已購買</button>
             <button class="os-select-all-btn" onclick="clearAllVisible()">✕ 清除本次選取</button>
+            <button id="sendShoppingListBtn" class="os-select-all-btn" onclick="sendShoppingListEmail()"
+              style="display:none; background:#111; color:#fff; border-color:#111;">📧 發送購物清單</button>
           </div>
           <div class="os-total-bar">
             <span id="osTotalLabel">📊 尚需購買日幣總額</span>
@@ -1634,6 +1636,67 @@ function onCheckChange(cb) {
 }
 
 // 全部標記為已購買（只對目前顯示的商品）
+function sendShoppingListEmail() {
+  if (!currentPurchaseEvent) return;
+  const btn = document.getElementById('sendShoppingListBtn');
+  btn.innerText = '發送中...';
+  btn.disabled = true;
+
+  // 收集目前「未購買」頁面顯示的商品
+  const items = [];
+  document.querySelectorAll('#orderSummaryGrid .oscard').forEach(card => {
+    card.querySelectorAll('.osrow:not(.header-row)').forEach(row => {
+      const key  = row.dataset.key;
+      if (!key) return;
+      const [name, sub] = key.split('|');
+      const qtyEl = row.querySelector('.osrow-qty');
+      const qty   = qtyEl ? parseInt(qtyEl.innerText) || 0 : 0;
+      if (qty <= 0) return;
+      // 找圖片和日幣
+      const img = card.querySelector('.oscard-img');
+      const photo = img ? img.src : '';
+      // 找 yenEach from purchaseData
+      let yenEach = 0;
+      purchaseData.forEach(p => {
+        if (p.name === name) p.subs.forEach(s => {
+          if ((s.sub || '') === (sub || '')) yenEach = s.yenEach || 0;
+        });
+      });
+      items.push({ name, sub: sub || '', qty, yenEach, photo });
+    });
+  });
+
+  if (!items.length) {
+    alert('沒有未購買的商品！');
+    btn.innerText = '📧 發送購物清單';
+    btn.disabled = false;
+    return;
+  }
+
+  fetch(GAS, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'sendShoppingList', eventName: currentPurchaseEvent, items })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.result === 'success') {
+      btn.innerText = `✓ 已發送至 ${data.to}`;
+      setTimeout(() => { btn.innerText = '📧 發送購物清單'; btn.disabled = false; }, 4000);
+    } else {
+      alert('❌ 發送失敗：' + (data.message || '未知錯誤'));
+      btn.innerText = '📧 發送購物清單';
+      btn.disabled = false;
+    }
+  })
+  .catch(e => {
+    alert('❌ 發送失敗，請重試。');
+    btn.innerText = '📧 發送購物清單';
+    btn.disabled = false;
+    console.error(e);
+  });
+}
+
 function selectAllVisible() {
   document.querySelectorAll('#orderSummaryGrid .bought-select').forEach(sel => {
     const max = parseInt(sel.dataset.max) || 0;
@@ -1834,6 +1897,10 @@ function applyPurchaseFilter() {
   document.getElementById('osTotalLabel').innerText = filterLabels[purchaseFilter] || '📊 日幣總額';
   document.getElementById('osTotalYen').innerText = '¥ ' + grandTotalYen.toLocaleString();
   if (visibleCount === 0) grid.innerHTML = '<div class="os-empty">此篩選條件下沒有商品</div>';
+
+  // 「未購買」才顯示發送購物清單按鈕
+  const slBtn = document.getElementById('sendShoppingListBtn');
+  if (slBtn) slBtn.style.display = (purchaseFilter === 'unbought' && visibleCount > 0) ? 'inline-flex' : 'none';
 }
 
 function updatePurchaseFloatSave() {
