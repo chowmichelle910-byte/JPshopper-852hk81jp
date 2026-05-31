@@ -415,7 +415,7 @@ function buildUrl(name) {
 function renderCards() {
   const list = document.getElementById('eventList');
   list.innerHTML = '';
-  const filtered = allSheets.filter(n => EXCLUDED.indexOf(n) === -1);
+  const filtered = allSheets.filter(n => !n.startsWith('[Data]') && EXCLUDED.indexOf(n) === -1);
   if (filtered.length === 0) {
     list.innerHTML = '<div class="empty-msg">📭 暫時沒有進行中的快閃代購活動</div>';
     return;
@@ -445,7 +445,7 @@ function renderCards() {
 function renderDrawer() {
   const container = document.getElementById('drawerEventList');
   container.innerHTML = '';
-  const filtered = allSheets.filter(n => EXCLUDED.indexOf(n) === -1);
+  const filtered = allSheets.filter(n => !n.startsWith('[Data]') && EXCLUDED.indexOf(n) === -1);
   if (filtered.length === 0) {
     container.innerHTML = '<div style="padding:16px 20px; color:#aaa; font-size:13px;">目前沒有活動</div>';
     return;
