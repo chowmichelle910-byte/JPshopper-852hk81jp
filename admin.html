@@ -1662,7 +1662,8 @@ function sendShoppingListEmail() {
           if ((s.sub || '') === (sub || '')) yenEach = s.yenEach || 0;
         });
       });
-      items.push({ name, sub: sub || '', qty, yenEach, photo });
+      // 不傳 photo（GAS 直接從 event sheet 讀取，避免 base64 body 過大）
+      items.push({ name, sub: sub || '', qty, yenEach });
     });
   });
 
