@@ -230,6 +230,53 @@
     .modal-confirm-btn { padding: 9px 18px; background: var(--danger); border: none; border-radius: 7px; font-size: 13px; font-weight: 700; cursor: pointer; color: #fff; transition: background 0.15s; }
     .modal-confirm-btn:hover { background: #dc2626; }
     .modal-confirm-btn:disabled { background: #ccc; cursor: not-allowed; }
+    /* 購物清單彈窗 */
+    .shopping-list-overlay {
+      position: fixed; inset: 0; background: #fff; z-index: 500;
+      overflow-y: auto; padding: 16px;
+      display: none; flex-direction: column;
+    }
+    .shopping-list-overlay.open { display: flex; }
+    .shopping-list-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px; padding-bottom: 12px;
+      border-bottom: 1px solid #eee;
+    }
+    .shopping-list-title { font-size: 16px; font-weight: 700; color: #111; }
+    .shopping-list-close {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: #f0f0f0; border: none; font-size: 18px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+    }
+    .shopping-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .shopping-cell {
+      background: #fafafa; border: 1px solid #eee;
+      border-radius: 10px; overflow: hidden;
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center;
+    }
+    .shopping-cell-img {
+      width: 100%; aspect-ratio: 1;
+      object-fit: cover; display: block;
+    }
+    .shopping-cell-body { padding: 6px 4px 8px; width: 100%; }
+    .shopping-cell-name { font-size: 11px; color: #333; line-height: 1.3; margin-bottom: 4px; }
+    .shopping-cell-qty {
+      font-size: 20px; font-weight: 800; color: #111;
+      background: #f0f0f0; border-radius: 6px;
+      padding: 2px 8px; display: inline-block;
+    }
+    .shopping-total {
+      margin-top: 16px; padding: 12px 16px;
+      background: #111; color: #fff; border-radius: 10px;
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 14px;
+    }
+
     /* 已取消訂單灰布 */
     .ocard.cancelled-card { position: relative; }
     .ocard.cancelled-card::after {
@@ -625,7 +672,7 @@
             <button class="os-select-all-btn" onclick="selectAllVisible()">✅ 全部標記為已購買</button>
             <button class="os-select-all-btn" onclick="clearAllVisible()">✕ 清除本次選取</button>
             <button id="sendShoppingListBtn" class="os-select-all-btn" onclick="sendShoppingListEmail()"
-              style="display:none; background:#111; color:#fff; border-color:#111;">📧 發送購物清單</button>
+              style="display:none; background:#111; color:#fff; border-color:#111;">📋 購物清單</button>
           </div>
           <div class="os-total-bar">
             <span id="osTotalLabel">📊 尚需購買日幣總額</span>
@@ -782,6 +829,19 @@
       <button class="modal-confirm-btn" onclick="confirmSettleAll()">確認並全部標記已結算</button>
     </div>
   </div>
+</div>
+
+<!-- 購物清單彈窗 -->
+<div class="shopping-list-overlay" id="shoppingListOverlay">
+  <div class="shopping-list-header">
+    <div>
+      <div class="shopping-list-title" id="shoppingListTitle">待購清單</div>
+      <div style="font-size:11px; color:#aaa; margin-top:2px;" id="shoppingListSubtitle"></div>
+    </div>
+    <button class="shopping-list-close" onclick="closeShoppingList()">✕</button>
+  </div>
+  <div class="shopping-grid" id="shoppingGrid"></div>
+  <div class="shopping-total" id="shoppingTotal"></div>
 </div>
 
 <!-- 取消訂單彈窗 -->
@@ -1638,58 +1698,62 @@ function onCheckChange(cb) {
 // 全部標記為已購買（只對目前顯示的商品）
 function sendShoppingListEmail() {
   if (!currentPurchaseEvent) return;
-  const btn = document.getElementById('sendShoppingListBtn');
-  btn.innerText = '發送中...';
-  btn.disabled = true;
+  const fallback = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221%22%20height%3D%221%22%3E%3Crect%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23111%22%2F%3E%3C%2Fsvg%3E';
 
-  // 收集目前「未購買」頁面顯示的商品
+  // 收集目前顯示的商品
   const items = [];
   document.querySelectorAll('#orderSummaryGrid .oscard').forEach(card => {
+    const imgEl = card.querySelector('.oscard-img');
+    const photo = (imgEl && imgEl.src && !imgEl.src.startsWith('data:')) ? imgEl.src : fallback;
     card.querySelectorAll('.osrow:not(.header-row)').forEach(row => {
-      const key  = row.dataset.key;
+      const key = row.dataset.key;
       if (!key) return;
       const [name, sub] = key.split('|');
       const qtyEl = row.querySelector('.osrow-qty');
-      const qty   = qtyEl ? parseInt(qtyEl.innerText) || 0 : 0;
+      const qty = qtyEl ? parseInt(qtyEl.innerText) || 0 : 0;
       if (qty <= 0) return;
-      // 找圖片和日幣
-      const img = card.querySelector('.oscard-img');
-      const photo = img ? img.src : '';
-      // 找 yenEach from purchaseData
-      let yenEach = 0;
-      purchaseData.forEach(p => {
-        if (p.name === name) p.subs.forEach(s => {
-          if ((s.sub || '') === (sub || '')) yenEach = s.yenEach || 0;
-        });
-      });
-      // 不傳 photo（GAS 直接從 event sheet 讀取，避免 base64 body 過大）
-      items.push({ name, sub: sub || '', qty, yenEach });
+      items.push({ name, sub: sub || '', qty, photo });
     });
   });
 
-  if (!items.length) {
-    alert('沒有未購買的商品！');
-    btn.innerText = '📧 發送購物清單';
-    btn.disabled = false;
-    return;
-  }
+  if (!items.length) { alert('沒有未購買的商品！'); return; }
 
-  fetch(GAS, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'sendShoppingList', eventName: currentPurchaseEvent, items })
-  })
-  .then(() => {
-    btn.innerText = '✓ 已發送！';
-    setTimeout(() => { btn.innerText = '📧 發送購物清單'; btn.disabled = false; }, 3000);
-  })
-  .catch(e => {
-    alert('❌ 發送失敗，請重試。');
-    btn.innerText = '📧 發送購物清單';
-    btn.disabled = false;
-    console.error(e);
+  // 計算總日幣
+  let totalYen = 0;
+  items.forEach(item => {
+    purchaseData.forEach(p => {
+      if (p.name === item.name) p.subs.forEach(s => {
+        if ((s.sub || '') === item.sub) totalYen += (s.yenEach || 0) * item.qty;
+      });
+    });
   });
+
+  // 渲染格子
+  const grid = document.getElementById('shoppingGrid');
+  grid.innerHTML = '';
+  items.forEach(item => {
+    const subText = item.sub ? `<br><span style="color:#888; font-size:10px;">${item.sub}</span>` : '';
+    const cell = document.createElement('div');
+    cell.className = 'shopping-cell';
+    cell.innerHTML = `
+      <img class="shopping-cell-img" src="${item.photo}" onerror="this.src='${fallback}'" />
+      <div class="shopping-cell-body">
+        <div class="shopping-cell-name">${item.name}${subText}</div>
+        <div class="shopping-cell-qty">${item.qty}</div>
+      </div>`;
+    grid.appendChild(cell);
+  });
+
+  document.getElementById('shoppingListTitle').innerText = `${currentPurchaseEvent} 待購清單`;
+  document.getElementById('shoppingListSubtitle').innerText = `共 ${items.length} 款商品`;
+  document.getElementById('shoppingTotal').innerHTML =
+    `<span>日幣總額</span><span style="font-size:18px; font-weight:800;">¥ ${totalYen.toLocaleString()}</span>`;
+
+  document.getElementById('shoppingListOverlay').classList.add('open');
+}
+
+function closeShoppingList() {
+  document.getElementById('shoppingListOverlay').classList.remove('open');
 }
 
 function selectAllVisible() {
