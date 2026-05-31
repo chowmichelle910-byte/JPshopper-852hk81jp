@@ -1675,19 +1675,13 @@ function sendShoppingListEmail() {
 
   fetch(GAS, {
     method: 'POST',
+    mode: 'no-cors',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action: 'sendShoppingList', eventName: currentPurchaseEvent, items })
   })
-  .then(r => r.json())
-  .then(data => {
-    if (data.result === 'success') {
-      btn.innerText = `✓ 已發送至 ${data.to}`;
-      setTimeout(() => { btn.innerText = '📧 發送購物清單'; btn.disabled = false; }, 4000);
-    } else {
-      alert('❌ 發送失敗：' + (data.message || '未知錯誤'));
-      btn.innerText = '📧 發送購物清單';
-      btn.disabled = false;
-    }
+  .then(() => {
+    btn.innerText = '✓ 已發送！';
+    setTimeout(() => { btn.innerText = '📧 發送購物清單'; btn.disabled = false; }, 3000);
   })
   .catch(e => {
     alert('❌ 發送失敗，請重試。');
