@@ -626,7 +626,10 @@
       <!-- ════ PAGE: 庫存管理 ════ -->
       <div class="page" id="page-stock">
         <div class="card">
-          <div class="card-title"><span>📦</span> 選擇活動</div>
+          <div class="card-title" style="display:flex; align-items:center; justify-content:space-between;">
+            <span><span>📦</span> 選擇活動</span>
+            <button class="topbar-btn" onclick="currentStockSheet && loadProducts(currentStockSheet)" style="font-size:11px; padding:4px 10px;">🔄 重新整理</button>
+          </div>
           <div class="event-tabs" id="eventTabsStock">
             <div style="color:#bbb; font-size:13px;">載入中...</div>
           </div>
@@ -648,7 +651,7 @@
             <span><span>🛒</span> 選擇活動</span>
             <div style="display:flex; gap:6px;">
               <button class="topbar-btn" id="syncPurchaseBtn" onclick="syncPurchaseRecord()" style="font-size:11px; padding:4px 10px; border-color:#f59e0b; color:#92400e;" title="從訂單紀錄重新同步 E/F 欄">⚡ 同步</button>
-              <button class="topbar-btn" onclick="currentStockSheet && loadOrderSummary(currentPurchaseEvent)" style="font-size:11px; padding:4px 10px;">🔄 重新整理</button>
+              <button class="topbar-btn" onclick="currentPurchaseEvent && loadOrderSummary(currentPurchaseEvent)" style="font-size:11px; padding:4px 10px;">🔄 重新整理</button>
             </div>
           </div>
           <div class="event-tabs" id="eventTabsPurchase">
@@ -979,7 +982,7 @@ function startAdminAutoRefresh() {
 async function loadSheetList() {
   try {
     const res = await fetch(GAS + '?action=getSheets');
-    allSheets = (await res.json()).filter(n => EXCLUDED.indexOf(n) === -1);
+    allSheets = (await res.json()).filter(n => !n.startsWith('[Data]') && EXCLUDED.indexOf(n) === -1);
     renderEventTabs('eventTabsStock', 'stock');
     renderEventTabs('eventTabsProduct', 'product');
     renderEventTabs('eventTabsPurchase', 'purchase');
@@ -1349,6 +1352,14 @@ function renderStockGrid() {
                   onclick="toggleSubSoldOut(${p.row}, '${sub.replace(/'/g, "\'")}', this)">
             ${isSoldOut ? '✕ 缺貨中' : '缺貨'}
           </button>
+          <div style="display:flex;align-items:center;gap:3px;margin-top:4px;">
+            <input type="number" min="1" max="99" placeholder="N件"
+              id="addLimit-${p.row}-${sub.replace(/[^a-zA-Z0-9]/g,'_')}"
+              style="width:50px;padding:3px 5px;border:1px solid var(--border);border-radius:5px;font-size:11px;text-align:center;">
+            <button class="topbar-btn" style="font-size:10px;padding:3px 7px;"
+              onclick="addSubStockLimit(${p.row},'${sub.replace(/'/g, "\'")}',document.getElementById('addLimit-${p.row}-${sub.replace(/[^a-zA-Z0-9]/g,'_')}'),this)"
+              title="在現有訂單/限購基礎上再接N件">再接</button>
+          </div>
         </div>`;
     });
 
@@ -1417,6 +1428,55 @@ function updateFloatSave() {
   const el = document.getElementById('floatSave');
   document.getElementById('floatBadge').innerText = `已修改 ${count} 項`;
   el.className = 'float-save' + (count > 0 && currentPage === 'stock' ? ' visible' : '');
+}
+
+function addSubStockLimit(rowNum, sub, inputEl, btn) {
+  const n = parseInt(inputEl.value);
+  if (!n || n <= 0) { alert('請輸入有效數量'); return; }
+  inputEl.value = '';
+
+  // 找此商品的現有 stockLimit
+  const product = (stockData || []).find(p => p.row === rowNum);
+  if (!product) { alert('找不到商品'); return; }
+  const curLimit = getSubLimit(product.stockLimitStr || '', sub);
+  const ordered  = (product.orderedQty || {})[sub] || 0;
+  // 基準：現有限購 or 當前訂單數
+  const base = (curLimit !== null && curLimit !== undefined) ? curLimit : ordered;
+  const newLimit = base + n;
+
+  // 加入 stockChanges
+  if (!stockChanges[rowNum]) stockChanges[rowNum] = {};
+  stockChanges[rowNum][sub] = newLimit;
+  updateFloatSave();
+  btn.innerText = `→${newLimit}`;
+  setTimeout(() => { btn.innerText = '再接'; }, 2000);
+}
+
+function addStockLimit(productName, sub, inputEl) {
+  const n = parseInt(inputEl.value);
+  if (!n || n <= 0) { alert('請輸入有效的數量'); return; }
+  inputEl.value = '';
+
+  // 找現有的 stockLimit
+  const key = productName + '|' + sub;
+  const stockData = window._stockData || {};
+  const subData = stockData[key] || { limit: null, ordered: 0 };
+  
+  // 新限購 = 現有限購（或當前訂單數）+ n
+  const currentLimit = subData.limit !== null && subData.limit !== undefined
+    ? subData.limit
+    : (subData.ordered || 0);
+  const newLimit = currentLimit + n;
+
+  // 更新 stockChanges
+  if (!stockChanges[productName]) stockChanges[productName] = {};
+  stockChanges[productName][sub] = newLimit;
+  updateFloatSave();
+  
+  // 即時更新顯示
+  const btn = inputEl.nextElementSibling;
+  btn.innerText = `→${newLimit}`;
+  setTimeout(() => { btn.innerText = '再接'; }, 2000);
 }
 
 function saveStockChanges() {
@@ -1499,6 +1559,7 @@ function savePurchasedChanges() {
 // ── 訂貨區 ──
 let purchasedQtyMap = {};   // { "eventName": { "name|sub": purchasedQty } }
 let purchaseData = [];      // 當前載入的訂貨摘要
+let purchaseBatches = [];   // 批次購買歷史 [{ date, items }]
 let purchaseChanges = {};   // { "商品名|款式": 已購買數量 }
 let currentPurchaseEvent = "";
 let purchaseFilter = 'all'; // all / paid / unpaid / bought / unbought
@@ -1541,6 +1602,7 @@ function loadOrderSummary(eventName) {
     .then(data => {
       if (data.error) { grid.innerHTML = `<div class="os-empty">❌ ${data.error}</div>`; content.style.display = 'block'; return; }
       purchaseData = data.items || [];
+      purchaseBatches = data.batches || [];
       purchaseFilter = 'all';
       document.querySelectorAll('#purchaseFilterBtns .filter-btn').forEach((b,i) => b.className = i===0 ? 'filter-btn active-filter' : 'filter-btn');
       content.style.display = 'block';
@@ -1792,6 +1854,79 @@ function applyPurchaseFilter() {
   const fallback = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221%22%20height%3D%221%22%3E%3Crect%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23111%22%2F%3E%3C%2Fsvg%3E';
   grid.innerHTML = '';
 
+  // ── 已購買篩選：顯示批次歷史（只讀）──
+  if (purchaseFilter === 'bought') {
+    const bulkActions = document.getElementById('purchaseBulkActions');
+    if (bulkActions) bulkActions.style.display = 'none';
+    document.getElementById('floatSave').className = 'float-save';
+
+    // 建立商品圖片對照表
+    const photoMap = {};
+    purchaseData.forEach(p => {
+      p.subs.forEach(s => {
+        if (s.photo && s.photo.startsWith('http')) photoMap[p.name] = s.photo;
+      });
+    });
+
+    if (!purchaseBatches.length) {
+      grid.innerHTML = '<div class="os-empty">暫無購買紀錄</div>';
+      document.getElementById('osTotalLabel').innerText = '💰 已購買日幣總額';
+      document.getElementById('osTotalYen').innerText = '¥ 0';
+      return;
+    }
+
+    let totalYen = 0;
+    purchaseBatches.forEach(batch => {
+      const section = document.createElement('div');
+      section.style.cssText = 'margin-bottom:16px;';
+      
+      // 日期標題
+      const dateLabel = document.createElement('div');
+      dateLabel.style.cssText = 'font-size:12px; font-weight:700; color:#666; background:#f5f5f5; padding:6px 12px; border-radius:6px; margin-bottom:8px;';
+      dateLabel.innerText = '📅 ' + batch.date;
+      section.appendChild(dateLabel);
+
+      // 商品格子
+      const batchGrid = document.createElement('div');
+      batchGrid.style.cssText = 'display:grid; grid-template-columns:repeat(3,1fr); gap:8px;';
+
+      for (const key in batch.items) {
+        const qty = batch.items[key];
+        const parts = key.split('|');
+        const name = parts[0], sub = parts[1] || '';
+        const displayName = name + (sub ? ` (${sub})` : '');
+        const imgSrc = photoMap[name] || fallback;
+
+        // 找日幣
+        let yenEach = 0;
+        purchaseData.forEach(p => {
+          if (p.name === name) p.subs.forEach(s => {
+            if ((s.sub||'') === sub) yenEach = s.yenEach || 0;
+          });
+        });
+        totalYen += yenEach * qty;
+
+        const cell = document.createElement('div');
+        cell.style.cssText = 'background:#fafafa; border:1px solid #eee; border-radius:8px; overflow:hidden; text-align:center;';
+        cell.innerHTML = `
+          <img src="${imgSrc}" onerror="this.src='${fallback}'"
+            style="width:100%; aspect-ratio:1; object-fit:cover; display:block;" />
+          <div style="padding:6px 4px 8px;">
+            <div style="font-size:10px; color:#333; line-height:1.3; margin-bottom:4px;">${displayName}</div>
+            <div style="font-size:18px; font-weight:800; color:#111; background:#f0f0f0; border-radius:5px; padding:2px 6px; display:inline-block;">×${qty}</div>
+          </div>`;
+        batchGrid.appendChild(cell);
+      }
+      section.appendChild(batchGrid);
+      grid.appendChild(section);
+    });
+
+    document.getElementById('osTotalLabel').innerText = '💰 已購買日幣總額';
+    document.getElementById('osTotalYen').innerText = '¥ ' + totalYen.toLocaleString();
+    return;
+  }
+
+  // ── 其他篩選 ──
   const isViewOnly = (purchaseFilter === 'paid' || purchaseFilter === 'unpaid');
   const bulkActions = document.getElementById('purchaseBulkActions');
   if (bulkActions) bulkActions.style.display = isViewOnly ? 'none' : 'flex';
@@ -1808,17 +1943,15 @@ function applyPurchaseFilter() {
       const allQty    = sub.allQty    || paidQty;
       const remaining = Math.max(0, paidQty - curBought);
 
-      if (purchaseFilter === 'all')     return allQty > 0;                            // 所有訂單（含未付款）
-      if (purchaseFilter === 'paid')    return paidQty > 0;                           // 有已付款訂單
-      if (purchaseFilter === 'unpaid')  return unpaidQty > 0;                         // 有未付款訂單
-      if (purchaseFilter === 'bought')  return curBought > 0;                          // 購貨紀錄 E欄 > 0
-      if (purchaseFilter === 'unbought')return paidQty > curBought && paidQty > 0;   // 已付款中還需購買（還需買>0才顯示）
+      if (purchaseFilter === 'all')     return allQty > 0;
+      if (purchaseFilter === 'paid')    return paidQty > 0;
+      if (purchaseFilter === 'unpaid')  return unpaidQty > 0;
+      if (purchaseFilter === 'unbought')return paidQty > curBought && paidQty > 0;
       return true;
     });
     if (!visibleSubs.length) return;
     visibleCount++;
 
-    // 商品卡
     const card = document.createElement('div');
     card.className = 'oscard';
     let imgSrc = fallback;
@@ -1826,7 +1959,6 @@ function applyPurchaseFilter() {
       if (sub.photo && sub.photo.startsWith('http')) { imgSrc = sub.photo; break; }
     }
 
-    // 計算此商品的顯示日幣
     const prodYen = visibleSubs.reduce((s, sub) => {
       const key = product.name + '|' + sub.sub;
       const curBought = purchaseChanges.hasOwnProperty(key) ? purchaseChanges[key] : sub.purchased;
@@ -1834,9 +1966,8 @@ function applyPurchaseFilter() {
       let qty = 0;
       if (purchaseFilter === 'paid')    qty = paidQty;
       else if (purchaseFilter === 'unpaid') qty = sub.unpaidQty || 0;
-      else if (purchaseFilter === 'bought') qty = curBought;
       else if (purchaseFilter === 'unbought') qty = Math.max(0, paidQty - curBought);
-      else qty = sub.allQty || paidQty; // all
+      else qty = sub.allQty || paidQty;
       return s + (sub.yenEach || 0) * qty;
     }, 0);
     grandTotalYen += prodYen;
@@ -1849,7 +1980,6 @@ function applyPurchaseFilter() {
       <div style="font-size:11px;color:#aaa;margin-top:3px;">¥ ${prodYen.toLocaleString()}</div></div>`;
     card.appendChild(header);
 
-    // 欄標題
     const headerRow = document.createElement('div');
     headerRow.className = 'osrow header-row';
     if (purchaseFilter === 'paid') {
@@ -1858,31 +1988,25 @@ function applyPurchaseFilter() {
     } else if (purchaseFilter === 'unpaid') {
       headerRow.innerHTML = `<span>款式</span><span style="text-align:center;">待付數量</span><span style="text-align:right;">日幣</span><span style="text-align:center;" colspan="2">狀態</span>`;
       headerRow.style.gridTemplateColumns = '1fr 60px 70px 80px';
-    } else if (purchaseFilter === 'bought') {
-      headerRow.innerHTML = `<span>款式</span><span style="text-align:center;">已購買</span><span style="text-align:right;">日幣</span><span style="text-align:center;">已買</span><span style="text-align:center;">✓</span>`;
-    } else if (purchaseFilter === 'unbought') {
-      headerRow.innerHTML = `<span>款式</span><span style="text-align:center;">還需買</span><span style="text-align:right;">日幣</span><span style="text-align:center;">新增購買</span><span style="text-align:center;">✓</span>`;
     } else {
-      headerRow.innerHTML = `<span>款式</span><span style="text-align:center;">需求</span><span style="text-align:right;">日幣</span><span style="text-align:center;">已買</span><span style="text-align:center;">✓</span>`;
+      headerRow.innerHTML = `<span>款式</span><span style="text-align:center;">還需買</span><span style="text-align:right;">日幣</span><span style="text-align:center;">新增購買</span><span style="text-align:center;">✓</span>`;
     }
     card.appendChild(headerRow);
 
-    // 款式行
     visibleSubs.forEach(sub => {
       const key = product.name + '|' + sub.sub;
       const curBought = purchaseChanges.hasOwnProperty(key) ? purchaseChanges[key] : sub.purchased;
-      const paidQty   = sub.paidQty   || sub.qty || 0;
+      const paidQty   = sub.paidQty || sub.qty || 0;
       const unpaidQty = sub.unpaidQty || 0;
-      const allQty    = sub.allQty    || paidQty;
+      const allQty    = sub.allQty || paidQty;
       const remaining = Math.max(0, paidQty - curBought);
       const isDone    = curBought >= paidQty && paidQty > 0;
 
       let displayQty = 0;
       if (purchaseFilter === 'paid')     displayQty = paidQty;
       else if (purchaseFilter === 'unpaid')  displayQty = unpaidQty;
-      else if (purchaseFilter === 'bought')  displayQty = curBought;
       else if (purchaseFilter === 'unbought')displayQty = remaining;
-      else displayQty = allQty; // all
+      else displayQty = allQty;
 
       const displayYen = (sub.yenEach || 0) * displayQty;
       const row = document.createElement('div');
@@ -1891,7 +2015,6 @@ function applyPurchaseFilter() {
 
       if (isViewOnly) {
         row.style.gridTemplateColumns = '1fr 60px 70px 80px';
-        // 已付款狀態
         let statusHtml = '';
         if (purchaseFilter === 'paid') {
           const excess = curBought - paidQty;
@@ -1910,9 +2033,6 @@ function applyPurchaseFilter() {
           <span class="osrow-yen">¥ ${displayYen.toLocaleString()}</span>
           ${statusHtml}`;
       } else {
-        // 可編輯模式（全部/已購買/未購買）
-        // 「未購買」的下拉上限是 paidQty（不扣已購買）
-        // 「未購買」：上限和預設都是 remaining（還需買數量）
         const maxOpt   = purchaseFilter === 'unbought' ? remaining : Math.max(paidQty, curBought, 10);
         const defBought = purchaseChanges.hasOwnProperty(key)
           ? Math.min(curBought, purchaseFilter === 'unbought' ? remaining : curBought)
@@ -1921,7 +2041,6 @@ function applyPurchaseFilter() {
         for (let i = 1; i <= maxOpt; i++) {
           options += `<option value="${i}"${defBought===i?' selected':''}>${i}</option>`;
         }
-        // 全部模式顯示 allQty，其他顯示各自的數量
         const qtyDisplay = purchaseFilter === 'all'
           ? `${paidQty}${unpaidQty > 0 ? '+'+unpaidQty+'未付' : ''}`
           : String(displayQty);
@@ -1945,19 +2064,16 @@ function applyPurchaseFilter() {
     grid.appendChild(card);
   });
 
-  // 總額標題
   const filterLabels = {
     all:     '📊 全部訂單日幣總額',
     paid:    '📊 已付款訂單日幣總額',
     unpaid:  '📊 未付款訂單日幣總額',
-    bought:  '💰 已購買日幣總額',
     unbought:'📊 未購買日幣總額（已付款）'
   };
   document.getElementById('osTotalLabel').innerText = filterLabels[purchaseFilter] || '📊 日幣總額';
   document.getElementById('osTotalYen').innerText = '¥ ' + grandTotalYen.toLocaleString();
   if (visibleCount === 0) grid.innerHTML = '<div class="os-empty">此篩選條件下沒有商品</div>';
 
-  // 「未購買」才顯示發送購物清單按鈕
   const slBtn = document.getElementById('sendShoppingListBtn');
   if (slBtn) slBtn.style.display = (purchaseFilter === 'unbought' && visibleCount > 0) ? 'inline-flex' : 'none';
 }
