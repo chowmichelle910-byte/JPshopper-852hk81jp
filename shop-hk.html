@@ -365,7 +365,7 @@ async function loadDrawerEvents() {
     const deadlines = await dlRes.json();
     const container = document.getElementById('drawerEvents');
     container.innerHTML = '';
-    sheets.filter(n => EXCLUDED.indexOf(n) === -1).forEach(name => {
+    sheets.filter(n => !n.startsWith('[Data]') && EXCLUDED.indexOf(n) === -1).forEach(name => {
       const slug = name.replace(/\s+/g, '-');
       const expired = deadlines[name] ? new Date() > new Date(deadlines[name].replace(/\//g,'-')) : false;
       const a = document.createElement('a');
