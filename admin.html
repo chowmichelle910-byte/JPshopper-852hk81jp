@@ -293,6 +293,21 @@
     .cancel-order-btn { padding: 5px 10px; background: none; border: 1px solid #fca5a5; border-radius: 6px; font-size: 11px; font-weight: 600; color: var(--danger); cursor: pointer; transition: all 0.15s; }
     .cancel-order-btn:hover { background: #fff5f5; }
     .resend-btn { padding: 5px 10px; background: none; border: 1px solid var(--border); border-radius: 6px; font-size: 11px; font-weight: 600; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+    .stockout-inquiry-btn { padding: 5px 10px; background: none; border: 1px solid #fed7aa; border-radius: 6px; font-size: 11px; font-weight: 600; color: #c2410c; cursor: pointer; transition: all 0.15s; }
+    .stockout-inquiry-btn:hover { background: #fff7ed; }
+    /* 缺貨詢問彈窗 */
+    .stockout-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:600; align-items:center; justify-content:center; padding:16px; }
+    .stockout-modal.open { display:flex; }
+    .stockout-modal-box { background:#fff; border-radius:14px; max-width:480px; width:100%; max-height:90vh; overflow-y:auto; padding:24px; }
+    .stockout-modal-title { font-size:16px; font-weight:700; margin-bottom:6px; }
+    .stockout-item-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid #f0f0f0; cursor:pointer; }
+    .stockout-item-row:last-child { border-bottom:none; }
+    .stockout-item-img { width:44px; height:44px; object-fit:cover; border-radius:6px; border:1px solid #eee; flex-shrink:0; }
+    .stockout-item-name { flex:1; font-size:13px; font-weight:600; color:#111; }
+    .stockout-item-sub { font-size:11px; color:#888; }
+    .stockout-check { width:20px; height:20px; accent-color:#c2410c; flex-shrink:0; }
+    .stockout-section-label { font-size:11px; font-weight:700; color:#888; letter-spacing:1px; margin:14px 0 6px; text-transform:uppercase; }
+
     .reminder-btn { padding: 5px 10px; background: none; border: 1px solid #fde68a; border-radius: 6px; font-size: 11px; font-weight: 600; color: #92400e; cursor: pointer; transition: all 0.15s; }
     .reminder-btn:hover { background: #fffbeb; }
     .reminder-btn.sent { border-color: var(--success); color: var(--success); }
@@ -834,6 +849,20 @@
   </div>
 </div>
 
+<!-- 缺貨詢問彈窗 -->
+<div class="stockout-modal" id="stockoutModal">
+  <div class="stockout-modal-box">
+    <div class="stockout-modal-title">📦 缺貨詢問通知</div>
+    <div style="font-size:12px; color:#888; margin-bottom:16px;" id="stockoutModalOrderId"></div>
+    <div style="font-size:13px; color:#555; margin-bottom:12px;">請勾選<strong style="color:#c2410c;">尚未購入</strong>的商品（未勾選 = 已成功購入）：</div>
+    <div id="stockoutItemList"></div>
+    <div style="display:flex; gap:10px; margin-top:20px;">
+      <button onclick="closeStockoutModal()" style="flex:1; padding:10px; border:1px solid #e0e0e0; border-radius:8px; background:#fff; cursor:pointer; font-size:13px;">取消</button>
+      <button id="stockoutSendBtn" onclick="sendStockoutInquiry()" style="flex:2; padding:10px; border:none; border-radius:8px; background:#c2410c; color:#fff; cursor:pointer; font-size:13px; font-weight:700;">📧 發送缺貨通知</button>
+    </div>
+  </div>
+</div>
+
 <!-- 購物清單彈窗 -->
 <div class="shopping-list-overlay" id="shoppingListOverlay">
   <div class="shopping-list-header">
@@ -1181,6 +1210,7 @@ function renderOrders(orders, bodyId, region, cls) {
           <button class="edit-order-btn" data-oid="${order.id}" onclick="toggleEditMode(this.dataset.oid)">✏️ 編輯</button>
           <button class="resend-btn" data-oid="${order.id}" onclick="resendPendingEmail(this.dataset.oid, this)">重發確認信</button>
           ${!isPaid ? `<button class="reminder-btn" data-oid="${order.id}" onclick="sendManualReminder(this.dataset.oid, this)">⚠️ 催款</button>` : ''}
+          ${isPaid ? `<button class="stockout-inquiry-btn" data-oid="${order.id}" onclick="openStockoutModal('${order.id}', ${JSON.stringify(parseSummaryFrontend(order.summary||''))})">📦 缺貨通知</button>` : ''}
           <button class="cancel-order-btn" data-oid="${order.id}" data-sum="${encodeURIComponent(order.summary || '')}" onclick="openCancelModal(this.dataset.oid, decodeURIComponent(this.dataset.sum))">取消訂單</button>
           <button id="btn-${order.id}" class="ocard-status-btn ${isPaid ? 'paid' : 'unpaid'}"
             ${isPaid ? 'disabled' : `onclick="confirmPayment('${order.id}')"`}>
@@ -2504,6 +2534,75 @@ function saveOrderEdit(orderId, card) {
     saveBtn.innerText = '💾 儲存修改';
     saveBtn.disabled = false;
     console.error(err);
+  });
+}
+
+// ── 缺貨詢問相關 ──
+let stockoutCurrentOrderId = '';
+let stockoutCurrentItems = [];
+
+function openStockoutModal(orderId, items) {
+  stockoutCurrentOrderId = orderId;
+  stockoutCurrentItems = items;
+  document.getElementById('stockoutModalOrderId').innerText = '訂單：' + orderId;
+  const fallback = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221%22%20height%3D%221%22%3E%3Crect%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23111%22%2F%3E%3C%2Fsvg%3E';
+  const list = document.getElementById('stockoutItemList');
+  list.innerHTML = '';
+  items.forEach((item, idx) => {
+    const subText = item.sub ? ` (${item.sub})` : '';
+    const photo = getItemPhoto ? getItemPhoto(item.name) : fallback;
+    const row = document.createElement('label');
+    row.className = 'stockout-item-row';
+    row.innerHTML = `
+      <input type="checkbox" class="stockout-check" id="soi_${idx}" checked>
+      <img class="stockout-item-img" src="${photo}" onerror="this.src='${fallback}'" />
+      <div>
+        <div class="stockout-item-name">${item.name}${subText}</div>
+        <div class="stockout-item-sub">× ${item.qty} 件</div>
+      </div>`;
+    list.appendChild(row);
+  });
+  document.getElementById('stockoutModal').classList.add('open');
+}
+
+function closeStockoutModal() {
+  document.getElementById('stockoutModal').classList.remove('open');
+}
+
+function sendStockoutInquiry() {
+  const checks = document.querySelectorAll('#stockoutItemList .stockout-check');
+  const outOfStock = [], inStock = [];
+  stockoutCurrentItems.forEach((item, idx) => {
+    const isOos = checks[idx] && checks[idx].checked;
+    const photo = getItemPhoto ? getItemPhoto(item.name) : '';
+    const entry = { name: item.name, sub: item.sub || '', qty: item.qty, photo };
+    if (isOos) outOfStock.push(entry);
+    else inStock.push(entry);
+  });
+  if (outOfStock.length === 0) { alert('請至少勾選一件缺貨商品！'); return; }
+  const btn = document.getElementById('stockoutSendBtn');
+  btn.innerText = '發送中...';
+  btn.disabled = true;
+  fetch(GAS, {
+    method: 'POST', mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'sendStockoutInquiry',
+      orderId: stockoutCurrentOrderId,
+      outOfStockItems: outOfStock,
+      inStockItems: inStock
+    })
+  }).then(() => {
+    btn.innerText = '✓ 已發送！';
+    setTimeout(() => {
+      btn.innerText = '📧 發送缺貨通知';
+      btn.disabled = false;
+      closeStockoutModal();
+    }, 2000);
+  }).catch(() => {
+    alert('❌ 發送失敗，請重試。');
+    btn.innerText = '📧 發送缺貨通知';
+    btn.disabled = false;
   });
 }
 
