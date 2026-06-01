@@ -1090,6 +1090,9 @@ function fetchOrders() {
       allHKOrders = hk;
       allTWOrders = tw;
       owedMapCache = {}; // 清除欠貨快取，重新計算
+      // 建立 orderId → summary 快取供缺貨通知使用
+      window._orderSummaryMap = {};
+      [...hk, ...tw].forEach(o => { window._orderSummaryMap[o.id] = o.summary || ''; });
       applyFilter('hk');
       applyFilter('tw');
     })
@@ -1210,10 +1213,7 @@ function renderOrders(orders, bodyId, region, cls) {
           <button class="edit-order-btn" data-oid="${order.id}" onclick="toggleEditMode(this.dataset.oid)">✏️ 編輯</button>
           <button class="resend-btn" data-oid="${order.id}" onclick="resendPendingEmail(this.dataset.oid, this)">重發確認信</button>
           ${!isPaid ? `<button class="reminder-btn" data-oid="${order.id}" onclick="sendManualReminder(this.dataset.oid, this)">⚠️ 催款</button>` : ''}
-          ${isPaid ? `<button class="stockout-inquiry-btn"
-              data-oid="${order.id}"
-              data-summary="${encodeURIComponent(order.summary||'')}"
-              onclick="openStockoutModal(this)">📦 缺貨通知</button>` : ''}
+          ${isPaid ? `<button class="stockout-inquiry-btn" onclick="openStockoutModal('${order.id}')">📦 缺貨通知</button>` : ''}
           <button class="cancel-order-btn" data-oid="${order.id}" data-sum="${encodeURIComponent(order.summary || '')}" onclick="openCancelModal(this.dataset.oid, decodeURIComponent(this.dataset.sum))">取消訂單</button>
           <button id="btn-${order.id}" class="ocard-status-btn ${isPaid ? 'paid' : 'unpaid'}"
             ${isPaid ? 'disabled' : `onclick="confirmPayment('${order.id}')"`}>
@@ -2544,9 +2544,8 @@ function saveOrderEdit(orderId, card) {
 let stockoutCurrentOrderId = '';
 let stockoutCurrentItems = [];
 
-function openStockoutModal(btn) {
-  const orderId = btn.dataset.oid;
-  const summary = decodeURIComponent(btn.dataset.summary || '');
+function openStockoutModal(orderId) {
+  const summary = (window._orderSummaryMap || {})[orderId] || '';
   const items = parseSummaryFrontend(summary);
   stockoutCurrentOrderId = orderId;
   stockoutCurrentItems = items;
