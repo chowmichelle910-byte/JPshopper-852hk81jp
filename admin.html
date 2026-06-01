@@ -2553,9 +2553,16 @@ function openStockoutModal(orderId) {
   const fallback = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221%22%20height%3D%221%22%3E%3Crect%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23111%22%2F%3E%3C%2Fsvg%3E';
   const list = document.getElementById('stockoutItemList');
   list.innerHTML = '';
+  // 從 purchaseData 建立圖片對照表
+  const globalPhotoMap = {};
+  (purchaseData || []).forEach(p => {
+    (p.subs || []).forEach(s => {
+      if (s.photo && s.photo.startsWith('http')) globalPhotoMap[p.name] = s.photo;
+    });
+  });
   items.forEach((item, idx) => {
     const subText = item.sub ? ` (${item.sub})` : '';
-    const photo = getItemPhoto ? getItemPhoto(item.name) : fallback;
+    const photo = globalPhotoMap[item.name] || fallback;
     const row = document.createElement('label');
     row.className = 'stockout-item-row';
     row.innerHTML = `
@@ -2579,7 +2586,7 @@ function sendStockoutInquiry() {
   const outOfStock = [], inStock = [];
   stockoutCurrentItems.forEach((item, idx) => {
     const isOos = checks[idx] && checks[idx].checked;
-    const photo = getItemPhoto ? getItemPhoto(item.name) : '';
+    const photo = globalPhotoMap[item.name] || '';
     const entry = { name: item.name, sub: item.sub || '', qty: item.qty, photo };
     if (isOos) outOfStock.push(entry);
     else inStock.push(entry);
