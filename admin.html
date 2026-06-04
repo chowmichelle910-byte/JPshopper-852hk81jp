@@ -2561,13 +2561,31 @@ function openStockoutModal(orderId) {
       if (s.photo && s.photo.startsWith('http')) globalPhotoMap[p.name] = s.photo;
     });
   });
+  // 用 owedMapCache 決定預設勾選：有欠貨的才預設打勾
+  const owedForOrder = (owedMapCache && stockoutCurrentOrderId)
+    ? Object.values(owedMapCache).reduce((acc, m) => Object.assign(acc, m[stockoutCurrentOrderId] || {}), {})
+    : {};
+
+  // 重新計算這張訂單的欠貨（從所有 event 的 owedMapCache 找）
+  let orderOwed = {};
+  for (const evKey in owedMapCache) {
+    const evOwed = owedMapCache[evKey];
+    if (evOwed[stockoutCurrentOrderId]) {
+      orderOwed = evOwed[stockoutCurrentOrderId];
+      break;
+    }
+  }
+
   items.forEach((item, idx) => {
     const subText = item.sub ? ` (${item.sub})` : '';
     const photo = globalPhotoMap[item.name] || fallback;
+    const owedKey = item.name + '|' + (item.sub || '');
+    // 預設打勾 = 有欠貨紀錄的商品（owedMapCache 有記錄），否則不打勾
+    const defaultChecked = orderOwed[owedKey] > 0 ? 'checked' : '';
     const row = document.createElement('label');
     row.className = 'stockout-item-row';
     row.innerHTML = `
-      <input type="checkbox" class="stockout-check" id="soi_${idx}" checked>
+      <input type="checkbox" class="stockout-check" id="soi_${idx}" ${defaultChecked}>
       <img class="stockout-item-img" src="${photo}" onerror="this.src='${fallback}'" />
       <div>
         <div class="stockout-item-name">${item.name}${subText}</div>
