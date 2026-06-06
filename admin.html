@@ -1270,7 +1270,7 @@ function renderOrders(orders, bodyId, region, cls) {
           <button class="resend-btn" data-oid="${order.id}" onclick="resendPendingEmail(this.dataset.oid, this)">重發確認信</button>
           ${!isPaid ? `<button class="reminder-btn" data-oid="${order.id}" onclick="sendManualReminder(this.dataset.oid, this)">⚠️ 催款</button>` : ''}
           ${isPaid ? `<button class="stockout-inquiry-btn" onclick="openStockoutModal('${order.id}')">📦 缺貨通知</button>` : ''}
-          ${(isPaid && order.pickup && order.pickup.includes('賣貨便')) ? `<div class="sf-section" id="sf-${order.id}">
+          ${(isPaid && ((order.pickupType||'').includes('賣貨便') || (order.payMethod||'').includes('郵局'))) ? `<div class="sf-section" id="sf-${order.id}">
             <div style="font-size:11px;font-weight:700;color:#1d4ed8;margin-bottom:8px;">📦 賣貨便備貨</div>
             <div class="sf-row">
               <span class="sf-label">商品圖片</span>
