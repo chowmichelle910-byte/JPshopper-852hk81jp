@@ -915,7 +915,7 @@
 <!-- Float Save -->
 <div class="float-save" id="floatSave">
   <div class="float-badge" id="floatBadge">已修改 0 項</div>
-  <button class="float-btn" onclick="saveStockChanges()">💾 確認儲存</button>
+  <button class="float-btn" onclick="event.preventDefault();saveStockChanges()">💾 確認儲存</button>
 </div>
 
 <script>
@@ -1300,38 +1300,26 @@ function renderOrders(orders, bodyId, region, cls) {
          </div>
 
           ${(isPaid && ((order.pickupType||'').includes('賣貨便') || (order.payMethod||'').includes('郵局'))) ? `
-          <div class="sf-section sf-section-${order.id}" id="sf-${order.id}">
-            <div class="sf-section-title">📦 賣貨便備貨</div>
+          <div class="sf-section" id="sf-${order.id}">
             <div class="sf-cols">
-
-              <!-- 商品圖片 -->
-              <div class="sf-col" onclick="sfUploadImage('${order.id}')" title="點擊上傳圖片" style="cursor:pointer;">
-                <div class="sf-col-label">商品圖片</div>
-                <button class="sf-img-btn" id="sf-imgbtn-${order.id}" title="點擊上傳">📷</button>
-                <span class="sf-url-copy" id="sf-url-${order.id}" title="點擊複製 URL"></span>
+              <div class="sf-col sf-col-img" onclick="sfUploadImage(\'${order.id}\')" style="cursor:pointer;" title="點擊上傳/拍照">
+                <span class="sf-col-label">圖片</span>
+                <button class="sf-img-btn" id="sf-imgbtn-${order.id}">📷</button>
+                <span class="sf-url-copy" id="sf-url-${order.id}"></span>
               </div>
-
-              <!-- 重量 -->
-              <div class="sf-col">
-                <div class="sf-col-label">重量</div>
+              <div class="sf-col sf-col-weight">
+                <span class="sf-col-label">重量</span>
                 <div class="sf-weight-wrap">
-                  <input type="number" class="sf-input" id="sf-weight-${order.id}"
-                    min="1" max="9999" placeholder="0"
-                    oninput="sfCalcFee('${order.id}')"
-                    onclick="event.stopPropagation()" />
+                  <input type="number" class="sf-input" id="sf-weight-${order.id}" min="1" max="9999" placeholder="0"
+                    oninput="sfCalcFee(\'${order.id}\')" onclick="event.stopPropagation()" />
                   <span class="sf-unit">g</span>
                 </div>
               </div>
-
-              <!-- 運費 -->
-              <div class="sf-col">
-                <div class="sf-col-label">國際運費</div>
-                <div style="display:flex;align-items:baseline;gap:2px;">
-                  <span class="sf-fee-val" id="sf-fee-${order.id}">-</span>
-                </div>
-                <span class="sf-fee-unit">NT$</span>
+              <div class="sf-col sf-col-fee">
+                <span class="sf-col-label">運費</span>
+                <span class="sf-fee-val" id="sf-fee-${order.id}">-</span>
+                <span class="sf-unit">NT$</span>
               </div>
-
             </div>
           </div>` : ''}
       </div>`;
@@ -1565,7 +1553,9 @@ function toggleSubSoldOut(row, sub, btn) {
 function updateFloatSave() {
   const count = Object.keys(stockChanges).length;
   const el = document.getElementById('floatSave');
-  document.getElementById('floatBadge').innerText = `已修改 ${count} 項`;
+  const sfCount2 = Object.values(sfChanges).filter(d => d.url || d.fee || d.weight).length;
+  const displayCount = currentPage === 'orders' ? sfCount2 : count;
+  document.getElementById('floatBadge').innerText = `已修改 ${displayCount} 項`;
   const sfCount = Object.values(sfChanges).filter(d => d.url).length;
   el.className = 'float-save' + ((count > 0 && currentPage === 'stock') || (sfCount > 0 && currentPage === 'orders') ? ' visible' : '');
 }
@@ -2785,7 +2775,7 @@ async function sfUploadImage(orderId) {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = 'image/*';
-  input.capture = 'environment'; // 優先後鏡頭（手機）
+  // input.capture = 'environment'; // 不設定 capture 讓用戶自行選擇相機或相簿
   input.onchange = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -3394,3 +3384,49 @@ function closeSidebar() {
     }
     .sf-changed { background:linear-gradient(135deg,#dbeafe,#eff6ff) !important; }
     .sf-changed .sf-col { border-color:#93c5fd; }
+
+    /* 賣貨便準備區 */
+    .sf-section {
+      padding:8px 12px 10px;
+      background:#f8faff;
+      border-top:1px dashed #c7d8f8;
+    }
+    .sf-cols {
+      display:flex; align-items:center; gap:8px;
+    }
+    .sf-col {
+      display:flex; flex-direction:column; align-items:center;
+      background:#fff; border-radius:8px; padding:6px 6px;
+      border:1px solid #e0ecff; gap:4px;
+    }
+    .sf-col-label {
+      font-size:11px; color:#9ca3af; font-weight:500;
+    }
+    .sf-col-img { flex:0 0 48px; }
+    .sf-col-weight { flex:0 0 72px; }
+    .sf-col-fee { flex:1; min-width:60px; }
+    .sf-img-btn {
+      width:44px; height:44px; border-radius:6px;
+      background:#eff6ff; border:1.5px dashed #93c5fd;
+      cursor:pointer; display:flex; align-items:center;
+      justify-content:center; font-size:18px;
+      overflow:hidden; padding:0; flex-shrink:0;
+    }
+    .sf-img-btn img { width:44px; height:44px; object-fit:cover; border-radius:6px; }
+    .sf-weight-wrap { display:flex; align-items:center; gap:3px; }
+    .sf-input {
+      width:44px; padding:4px 4px; border:1.5px solid #bfdbfe;
+      border-radius:6px; font-size:13px; font-weight:600;
+      text-align:center; color:#1d4ed8; background:#fff; outline:none;
+    }
+    .sf-input:focus { border-color:#3b82f6; }
+    .sf-unit { font-size:11px; color:#9ca3af; }
+    .sf-fee-val { font-size:15px; font-weight:700; color:#1d4ed8; }
+    .sf-url-copy {
+      font-size:9px; color:#3b82f6; cursor:pointer;
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+      padding:2px 4px; background:#eff6ff; border-radius:3px;
+      display:none; max-width:40px; text-align:center;
+    }
+    .sf-changed { background:#eef4ff !important; }
+
