@@ -1282,30 +1282,54 @@ function parseSummaryFrontend(text) {
     } else { current += ch; }
   }
   if (current.trim()) parts.push(current.trim());
+
   parts.forEach(part => {
     part = part.trim();
-    const lo = part.lastIndexOf('('), lc = part.lastIndexOf(')');
-    if (lo !== -1 && lc > lo) {
-      const inside = part.substring(lo+1, lc).trim();
-      const name = part.substring(0, lo).trim();
-      if (inside.match(/[,，]/)) {
-        inside.split(/[,，]/).forEach(sp => {
-          sp = sp.trim();
-          const m = sp.match(/[xX×]\s*(\d+)\s*$/);
-          const qty = m ? parseInt(m[1]) : 1;
-          const sub = m ? sp.replace(/[xX×]\s*\d+\s*$/, '').trim() : sp;
-          if (sub) items.push({ name, sub, qty });
-        });
-      } else {
-        const m = inside.match(/[xX×]\s*(\d+)\s*$/);
-        const qty = m ? parseInt(m[1]) : 1;
-        const sub = m ? inside.replace(/[xX×]\s*\d+\s*$/, '').trim() : inside.trim();
-        items.push({ name, sub, qty });
-      }
+
+    // Step 1：提取數量 ( xN) 或 (xN)（ASCII半形括號）
+    let qty = 1;
+    const qtyM = part.match(/\(\s*[xX×]\s*(\d+)\s*\)\s*$/);
+    if (qtyM) {
+      qty = parseInt(qtyM[1]);
+      part = part.slice(0, part.lastIndexOf(qtyM[0])).trim();
     } else {
-      const m = part.match(/[xX×]\s*(\d+)\s*$/);
-      items.push({ name: m ? part.replace(/[xX×]\s*\d+\s*$/, '').trim() : part, sub: '', qty: m ? parseInt(m[1]) : 1 });
+      const qtyM2 = part.match(/\s+[xX×]\s*(\d+)\s*$/);
+      if (qtyM2) {
+        qty = parseInt(qtyM2[1]);
+        part = part.slice(0, part.lastIndexOf(qtyM2[0])).trim();
+      }
     }
+
+    // Step 2：提取款式
+    // 優先：尾部全形括號 （款式）→ 明確標示款式
+    let sub = '';
+    const fwM = part.match(/（([^）]+)）\s*$/);
+    if (fwM) {
+      sub = fwM[1].trim();
+      part = part.replace(/（[^）]+）\s*$/, '').trim();
+    } else {
+      // 沒有全形括號，找最後一個半形括號（但排除像 (Vintage Black) 這類嵌入在名稱裡的情況）
+      // 只有「括號是整段的最後一個 word」才當款式
+      const lo = part.lastIndexOf('('), lc = part.lastIndexOf(')');
+      if (lo !== -1 && lc > lo && lc === part.length - 1) {
+        const inside = part.substring(lo + 1, lc).trim();
+        // 如果括號內有逗號 → 多款式
+        if (inside.match(/[,，]/)) {
+          inside.split(/[,，]/).forEach(sp => {
+            sp = sp.trim();
+            const m = sp.match(/[xX×]\s*(\d+)\s*$/);
+            const spQty = m ? parseInt(m[1]) : qty;
+            const spSub = m ? sp.replace(/[xX×]\s*\d+\s*$/, '').trim() : sp;
+            if (spSub) items.push({ name: part.substring(0, lo).trim(), sub: spSub, qty: spQty });
+          });
+          return; // forEach callback return
+        }
+        sub = inside;
+        part = part.substring(0, lo).trim();
+      }
+    }
+
+    items.push({ name: part, sub, qty });
   });
   return items;
 }
