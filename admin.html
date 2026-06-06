@@ -1270,24 +1270,6 @@ function renderOrders(orders, bodyId, region, cls) {
           <button class="resend-btn" data-oid="${order.id}" onclick="resendPendingEmail(this.dataset.oid, this)">重發確認信</button>
           ${!isPaid ? `<button class="reminder-btn" data-oid="${order.id}" onclick="sendManualReminder(this.dataset.oid, this)">⚠️ 催款</button>` : ''}
           ${isPaid ? `<button class="stockout-inquiry-btn" onclick="openStockoutModal('${order.id}')">📦 缺貨通知</button>` : ''}
-          ${(isPaid && ((order.pickupType||'').includes('賣貨便') || (order.payMethod||'').includes('郵局'))) ? `<div class="sf-section" id="sf-${order.id}">
-            <div style="font-size:11px;font-weight:700;color:#1d4ed8;margin-bottom:8px;">📦 賣貨便備貨</div>
-            <div class="sf-row">
-              <span class="sf-label">商品圖片</span>
-              <button class="sf-img-btn" onclick="sfUploadImage('${order.id}')">📷 選擇圖片</button>
-              <img id="sf-preview-${order.id}" class="sf-img-preview" />
-            </div>
-            <div class="sf-row">
-              <span class="sf-label">重量(g)</span>
-              <input type="number" class="sf-input" id="sf-weight-${order.id}" min="1" max="9999" placeholder="g" oninput="sfCalcFee('${order.id}')" />
-              <span class="sf-label" style="margin-left:4px;">運費</span>
-              <span class="sf-fee" id="sf-fee-${order.id}">-</span>
-            </div>
-            <div id="sf-url-row-${order.id}" style="display:none;margin-top:4px;">
-              <div class="sf-label" style="margin-bottom:2px;">圖片URL</div>
-              <span class="sf-url" id="sf-url-${order.id}"></span>
-            </div>
-          </div>` : ''}
           <button class="cancel-order-btn" data-oid="${order.id}" data-sum="${encodeURIComponent(order.summary || '')}" onclick="openCancelModal(this.dataset.oid, decodeURIComponent(this.dataset.sum))">取消訂單</button>
           <button id="btn-${order.id}" class="ocard-status-btn ${isPaid ? 'paid' : 'unpaid'}"
             ${isPaid ? 'disabled' : `onclick="confirmPayment('${order.id}')"`}>
@@ -1316,6 +1298,42 @@ function renderOrders(orders, bodyId, region, cls) {
                   placeholder="${cls === 'hk' ? '例如：SF1234567890' : '例如：https://buy.ruten.com.tw/...'}" />
            <button class="shipment-save-btn" onclick="saveShipmentRef('${order.id}', this)">儲存</button>
          </div>
+
+          ${(isPaid && ((order.pickupType||'').includes('賣貨便') || (order.payMethod||'').includes('郵局'))) ? `
+          <div class="sf-section sf-section-${order.id}" id="sf-${order.id}">
+            <div class="sf-section-title">📦 賣貨便備貨</div>
+            <div class="sf-cols">
+
+              <!-- 商品圖片 -->
+              <div class="sf-col" onclick="sfUploadImage('${order.id}')" title="點擊上傳圖片" style="cursor:pointer;">
+                <div class="sf-col-label">商品圖片</div>
+                <button class="sf-img-btn" id="sf-imgbtn-${order.id}" title="點擊上傳">📷</button>
+                <span class="sf-url-copy" id="sf-url-${order.id}" title="點擊複製 URL"></span>
+              </div>
+
+              <!-- 重量 -->
+              <div class="sf-col">
+                <div class="sf-col-label">重量</div>
+                <div class="sf-weight-wrap">
+                  <input type="number" class="sf-input" id="sf-weight-${order.id}"
+                    min="1" max="9999" placeholder="0"
+                    oninput="sfCalcFee('${order.id}')"
+                    onclick="event.stopPropagation()" />
+                  <span class="sf-unit">g</span>
+                </div>
+              </div>
+
+              <!-- 運費 -->
+              <div class="sf-col">
+                <div class="sf-col-label">國際運費</div>
+                <div style="display:flex;align-items:baseline;gap:2px;">
+                  <span class="sf-fee-val" id="sf-fee-${order.id}">-</span>
+                </div>
+                <span class="sf-fee-unit">NT$</span>
+              </div>
+
+            </div>
+          </div>` : ''}
       </div>`;
     container.appendChild(card);
   });
@@ -2748,7 +2766,7 @@ function sfCalcFee(orderId) {
   const feeEl = document.getElementById('sf-fee-' + orderId);
   if (!w) { feeEl.innerText = '-'; return; }
   const fee = Math.ceil(w / 50 * 20);
-  feeEl.innerText = 'NT$ ' + fee;
+  feeEl.innerText = fee;
   // 記錄到暫存
   if (!sfChanges[orderId]) sfChanges[orderId] = {};
   sfChanges[orderId].weight = w;
@@ -2794,32 +2812,32 @@ async function sfUploadImage(orderId) {
       const data = await res.json();
 
       if (data.secure_url) {
-        // 取 .jpg 格式 URL
         const jpgUrl = data.secure_url.replace(/\.[^.]+$/, '.jpg');
 
-        // 顯示預覽
-        const preview = document.getElementById('sf-preview-' + orderId);
-        preview.src = jpgUrl;
-        preview.style.display = 'block';
+        // 圖片按鈕改為預覽圖
+        const imgBtn = document.getElementById('sf-imgbtn-' + orderId);
+        imgBtn.innerHTML = `<img src="${jpgUrl}" class="sf-img-preview" style="display:block;width:52px;height:52px;object-fit:cover;border-radius:8px;" />`;
 
-        // 顯示 URL
-        const urlRow = document.getElementById('sf-url-row-' + orderId);
-        urlRow.style.display = 'block';
+        // 顯示可複製 URL
         const urlEl = document.getElementById('sf-url-' + orderId);
+        urlEl.style.display = 'block';
         urlEl.innerText = jpgUrl;
-        urlEl.onclick = () => { navigator.clipboard.writeText(jpgUrl); urlEl.style.color = '#16a34a'; setTimeout(() => urlEl.style.color = '', 1500); };
-        urlEl.style.cursor = 'pointer';
-        urlEl.title = '點擊複製';
+        urlEl.onclick = () => {
+          navigator.clipboard.writeText(jpgUrl);
+          urlEl.style.background = '#bbf7d0';
+          urlEl.innerText = '✓ 已複製！';
+          setTimeout(() => { urlEl.style.background = '#eff6ff'; urlEl.innerText = jpgUrl; }, 2000);
+        };
 
         // 暫存
         if (!sfChanges[orderId]) sfChanges[orderId] = {};
         sfChanges[orderId].url = jpgUrl;
         updateFloatSave();
 
-        // 高亮 section
+        // 高亮
         document.getElementById('sf-' + orderId).classList.add('sf-changed');
         btn.innerText = '✓ 已上傳';
-        setTimeout(() => { btn.innerText = '📷 重新上傳'; btn.disabled = false; }, 2000);
+        setTimeout(() => { btn.innerText = '📷 重拍'; btn.disabled = false; }, 1500);
       } else {
         throw new Error(data.error?.message || '上傳失敗');
       }
@@ -3332,3 +3350,47 @@ function closeSidebar() {
 </script>
 </body>
 </html>
+    /* 賣貨便準備區 */
+    .sf-section {
+      margin-top:0; padding:10px 12px 14px;
+      background:linear-gradient(135deg,#f0f7ff 0%,#eff6ff 100%);
+      border-top:1px dashed #bfdbfe;
+    }
+    .sf-section-title {
+      font-size:10px; font-weight:700; color:#93c5fd;
+      letter-spacing:1.5px; margin-bottom:10px;
+    }
+    .sf-cols { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+    .sf-col {
+      display:flex; flex-direction:column; align-items:center;
+      background:#fff; border-radius:10px; padding:10px 6px;
+      border:1px solid #e0ecff; gap:6px; transition:box-shadow 0.15s;
+    }
+    .sf-col:hover { box-shadow:0 2px 8px rgba(59,130,246,0.12); }
+    .sf-col-label { font-size:10px; color:#93c5fd; font-weight:700; }
+    .sf-img-btn {
+      width:52px; height:52px; border-radius:8px;
+      background:#eff6ff; border:1.5px dashed #93c5fd;
+      cursor:pointer; display:flex; align-items:center;
+      justify-content:center; font-size:22px; transition:all 0.15s;
+      overflow:hidden; padding:0;
+    }
+    .sf-img-btn:hover { background:#dbeafe; border-color:#3b82f6; }
+    .sf-img-preview { width:52px; height:52px; object-fit:cover; border-radius:8px; display:none; }
+    .sf-weight-wrap { display:flex; align-items:center; gap:4px; }
+    .sf-input {
+      width:58px; padding:6px 6px; border:1.5px solid #bfdbfe;
+      border-radius:7px; font-size:14px; font-weight:700;
+      text-align:center; color:#1d4ed8; background:#fff; outline:none;
+    }
+    .sf-input:focus { border-color:#3b82f6; box-shadow:0 0 0 2px rgba(59,130,246,0.15); }
+    .sf-unit { font-size:11px; color:#93c5fd; font-weight:600; }
+    .sf-fee-val { font-size:18px; font-weight:800; color:#1d4ed8; }
+    .sf-url-copy {
+      font-size:9px; color:#3b82f6; word-break:break-all;
+      text-align:center; cursor:pointer; max-width:100%;
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+      padding:2px 4px; background:#eff6ff; border-radius:4px; display:none;
+    }
+    .sf-changed { background:linear-gradient(135deg,#dbeafe,#eff6ff) !important; }
+    .sf-changed .sf-col { border-color:#93c5fd; }
