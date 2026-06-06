@@ -1283,31 +1283,40 @@ function parseSummaryFrontend(text) {
   }
   if (current.trim()) parts.push(current.trim());
 
-  // 尺碼判斷（括號內是這些才算款式，其他都是商品名的一部分）
+  // 尺碼列表（只有這些才視為款式）
   const SIZE_RE = /^(XS|S|M|L|XL|XXL|2XL|3XL|XXXL|4XL|XXXXL|Free\s*Size|One\s*Size|FREE|OS|F\/S)$/i;
 
   parts.forEach(part => {
     part = part.trim();
+    let qty = 1, sub = '';
 
-    // Step 1：移除末尾的數量 ( xN)
-    let qty = 1;
-    const qtyM = part.match(/\(\s*[xX×]\s*(\d+)\s*\)\s*$/);
-    if (qtyM) {
-      qty = parseInt(qtyM[1]);
-      part = part.slice(0, part.lastIndexOf(qtyM[0])).trim();
+    // ── 格式 A：末尾 (SIZE xN) — 款式和數量在同一括號 ──
+    // e.g. "CREAM Vintage Tee (White) (XXL x1)"
+    const fmtA = part.match(/\(([^)]+?)\s+[xX×]\s*(\d+)\s*\)\s*$/);
+    if (fmtA && SIZE_RE.test(fmtA[1].trim())) {
+      sub = fmtA[1].trim();
+      qty = parseInt(fmtA[2]);
+      part = part.slice(0, part.lastIndexOf(fmtA[0])).trim();
+      items.push({ name: part, sub, qty });
+      return;
     }
 
-    // Step 2：檢查最後一個括號是否為尺碼
-    let sub = '';
-    const lo = part.lastIndexOf('(');
-    const lc = part.lastIndexOf(')');
+    // ── 格式 B：末尾 ( xN) — 只有數量，無款式 ──
+    // e.g. "NIRACHAN mini NUI (綺羅キラー) ( x8)"
+    const fmtB = part.match(/\(\s*[xX×]\s*(\d+)\s*\)\s*$/);
+    if (fmtB) {
+      qty = parseInt(fmtB[1]);
+      part = part.slice(0, part.lastIndexOf(fmtB[0])).trim();
+    }
+
+    // 檢查剩餘末尾是否為尺碼括號，e.g. "(XXL)"
+    const lo = part.lastIndexOf('('), lc = part.lastIndexOf(')');
     if (lo !== -1 && lc > lo && lc === part.length - 1) {
       const inside = part.substring(lo + 1, lc).trim();
       if (SIZE_RE.test(inside)) {
         sub = inside;
         part = part.substring(0, lo).trim();
       }
-      // 若不是尺碼，括號保留在商品名稱中
     }
 
     items.push({ name: part, sub, qty });
