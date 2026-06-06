@@ -950,20 +950,40 @@ async function init() {
 // ── 按付款時間分配已購買庫存，計算欠貨 ──
 function computeOwedMap(orders, eventName) {
   // 只計算已付款訂單，按付款時間升序排列
+  // 解析日期字串：支援 yyyy/MM/dd HH:mm 和其他格式
+  function parsePayTime(str) {
+    if (!str) return 0;
+    // 把 / 換成 - 讓標準解析器認識 yyyy-MM-dd HH:mm
+    const normalized = str.toString().replace(/\//g, '-');
+    const t = new Date(normalized).getTime();
+    if (!isNaN(t)) return t;
+    // fallback：手動解析 yyyy/MM/dd HH:mm
+    const m = str.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})\s+(\d{1,2}):(\d{2})/);
+    if (m) return new Date(m[1], m[2]-1, m[3], m[4], m[5]).getTime();
+    return 0;
+  }
+
   const paid = orders
     .filter(o => (o.status === '已付款' || o.status === '已收款') && o.event === eventName)
     .slice()
-    .sort((a, b) => {
-      const ta = a.paymentTime ? new Date(a.paymentTime).getTime() : 0;
-      const tb = b.paymentTime ? new Date(b.paymentTime).getTime() : 0;
-      return ta - tb; // 付款最早的在前
-    });
+    .sort((a, b) => parsePayTime(a.paymentTime) - parsePayTime(b.paymentTime));
 
   // 從 purchasedQtyMap 取得庫存（deep copy）
   const inventory = {};
   const eventPurchased = purchasedQtyMap[eventName] || {};
   for (const key in eventPurchased) {
     inventory[key] = eventPurchased[key] || 0;
+  }
+
+  // 如果庫存全是0，可能是 key 格式不符，輸出 debug 資訊
+  const invTotal = Object.values(inventory).reduce((s, v) => s + v, 0);
+  if (invTotal === 0 && paid.length > 0) {
+    console.warn('[computeOwedMap] inventory 全是0，可能 purchasedQtyMap key 格式不符。', 
+      'inventory keys:', Object.keys(inventory).slice(0,3),
+      'order item key example:', (() => {
+        try { const it = parseSummaryFrontend(paid[0].summary||''); return it[0] ? it[0].name+'|'+(it[0].sub||'') : 'N/A'; } catch(e) { return 'error'; }
+      })()
+    );
   }
 
   // 按順序分配庫存，記錄每筆訂單的欠貨
