@@ -2554,13 +2554,22 @@ function openStockoutModal(orderId) {
   const fallback = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221%22%20height%3D%221%22%3E%3Crect%20width%3D%221%22%20height%3D%221%22%20fill%3D%22%23111%22%2F%3E%3C%2Fsvg%3E';
   const list = document.getElementById('stockoutItemList');
   list.innerHTML = '';
-  // 從 purchaseData 建立圖片對照表（全局，供 sendStockoutInquiry 使用）
+  // 從訂單資料的 productPhotos 建立圖片對照表（最可靠的來源）
   globalPhotoMap = {};
-  (purchaseData || []).forEach(p => {
-    (p.subs || []).forEach(s => {
-      if (s.photo && s.photo.startsWith('http')) globalPhotoMap[p.name] = s.photo;
+  // 從 allHKOrders + allTWOrders 的 productPhotos 填充
+  [...(allHKOrders || []), ...(allTWOrders || [])].forEach(order => {
+    (order.productPhotos || []).forEach(p => {
+      if (p.photo && p.photo.startsWith('http')) globalPhotoMap[p.name] = p.photo;
     });
   });
+  // fallback：從 purchaseData
+  if (Object.keys(globalPhotoMap).length === 0) {
+    (purchaseData || []).forEach(p => {
+      (p.subs || []).forEach(s => {
+        if (s.photo && s.photo.startsWith('http')) globalPhotoMap[p.name] = s.photo;
+      });
+    });
+  }
   // 用 owedMapCache 決定預設勾選：有欠貨的才預設打勾
   const owedForOrder = (owedMapCache && stockoutCurrentOrderId)
     ? Object.values(owedMapCache).reduce((acc, m) => Object.assign(acc, m[stockoutCurrentOrderId] || {}), {})
