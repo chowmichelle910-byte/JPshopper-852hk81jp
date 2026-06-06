@@ -287,6 +287,19 @@
     .ocard.cancelled-card .ocard-top,
     .ocard.cancelled-card .ocard-body,
     .ocard.cancelled-card .ocard-foot { opacity: 0.7; }
+    /* 缺貨商品：刪除線 + 半透明灰色 */
+    .ocard-item.stockout-item {
+      opacity: 0.45;
+      filter: grayscale(80%);
+    }
+    .ocard-item.stockout-item .ocard-item-name {
+      text-decoration: line-through;
+      color: #888;
+    }
+    .ocard-item.stockout-item .ocard-item-price {
+      text-decoration: line-through;
+      color: #aaa;
+    }
     /* 欠貨標籤 */
     .owed-badge { display:inline-block; background:#fee2e2; color:#dc2626; font-size:10px; font-weight:700; padding:1px 5px; border-radius:3px; margin-left:4px; vertical-align:middle; }
 
@@ -906,6 +919,10 @@
 </div>
 
 <script>
+const CLOUDINARY_CLOUD  = 'db7sjoxid';
+const CLOUDINARY_KEY    = '474598516575124';
+const CLOUDINARY_SECRET = 'mh1dbws3zmjNdgpY2kq8lfbUQIg';
+
 const GAS = "https://script.google.com/macros/s/AKfycbzgsFv9_AjExH0VCh1m6DX18qTmXMKwO0xiBGQfYqvO2Q6nb5ZNeXRbsdRsbGVcFidIQw/exec";
 const EXCLUDED = ["Blank","易寄取地址","訂單紀錄","收單截止時間","購貨紀錄","盈利紀錄"];
 
@@ -1053,6 +1070,7 @@ function goto(page) {
   // 切換頁面時重新評估浮動按鈕是否該顯示
   const floatEl = document.getElementById('floatSave');
   const hasStock = Object.keys(stockChanges).length > 0;
+  const hasSf = Object.values(sfChanges).some(d => d.url);
   const hasPurchase = Object.keys(purchaseChanges).length > 0;
   if (page === 'stock' && hasStock) floatEl.className = 'float-save visible';
   else if (page === 'purchase' && hasPurchase) floatEl.className = 'float-save visible';
@@ -1190,6 +1208,24 @@ function renderOrders(orders, bodyId, region, cls) {
           <div class="ocard-item-price">× ${item.qty}</div>
         </div>`;
     });
+
+    // 顯示缺貨商品（T欄 stockoutItems），灰色半透明+刪除線
+    const stockoutSummary = order.stockoutItems || '';
+    if (stockoutSummary) {
+      const stockoutParsed = parseSummaryFrontend(stockoutSummary);
+      stockoutParsed.forEach(item => {
+        const subText = item.sub ? ` <span style="color:#bbb;font-weight:400;">(${item.sub})</span>` : '';
+        const imgSrc = getItemPhoto(item.name);
+        itemsHtml += `
+          <div class="ocard-item stockout-item" title="缺貨商品">
+            <img class="ocard-item-img" src="${imgSrc}" onerror="this.src='${fallback}'" style="opacity:0.4;" />
+            <div class="ocard-item-info">
+              <div class="ocard-item-name">${item.name}${subText}</div>
+            </div>
+            <div class="ocard-item-price">× ${item.qty}</div>
+          </div>`;
+      });
+    }
     if (!itemsHtml) {
       itemsHtml = `<div style="font-size:12px;color:var(--muted);padding:4px 0;">${order.summary || '無明細'}</div>`;
     }
@@ -1234,6 +1270,24 @@ function renderOrders(orders, bodyId, region, cls) {
           <button class="resend-btn" data-oid="${order.id}" onclick="resendPendingEmail(this.dataset.oid, this)">重發確認信</button>
           ${!isPaid ? `<button class="reminder-btn" data-oid="${order.id}" onclick="sendManualReminder(this.dataset.oid, this)">⚠️ 催款</button>` : ''}
           ${isPaid ? `<button class="stockout-inquiry-btn" onclick="openStockoutModal('${order.id}')">📦 缺貨通知</button>` : ''}
+          ${(isPaid && order.pickup && order.pickup.includes('賣貨便')) ? `<div class="sf-section" id="sf-${order.id}">
+            <div style="font-size:11px;font-weight:700;color:#1d4ed8;margin-bottom:8px;">📦 賣貨便備貨</div>
+            <div class="sf-row">
+              <span class="sf-label">商品圖片</span>
+              <button class="sf-img-btn" onclick="sfUploadImage('${order.id}')">📷 選擇圖片</button>
+              <img id="sf-preview-${order.id}" class="sf-img-preview" />
+            </div>
+            <div class="sf-row">
+              <span class="sf-label">重量(g)</span>
+              <input type="number" class="sf-input" id="sf-weight-${order.id}" min="1" max="9999" placeholder="g" oninput="sfCalcFee('${order.id}')" />
+              <span class="sf-label" style="margin-left:4px;">運費</span>
+              <span class="sf-fee" id="sf-fee-${order.id}">-</span>
+            </div>
+            <div id="sf-url-row-${order.id}" style="display:none;margin-top:4px;">
+              <div class="sf-label" style="margin-bottom:2px;">圖片URL</div>
+              <span class="sf-url" id="sf-url-${order.id}"></span>
+            </div>
+          </div>` : ''}
           <button class="cancel-order-btn" data-oid="${order.id}" data-sum="${encodeURIComponent(order.summary || '')}" onclick="openCancelModal(this.dataset.oid, decodeURIComponent(this.dataset.sum))">取消訂單</button>
           <button id="btn-${order.id}" class="ocard-status-btn ${isPaid ? 'paid' : 'unpaid'}"
             ${isPaid ? 'disabled' : `onclick="confirmPayment('${order.id}')"`}>
@@ -1494,7 +1548,8 @@ function updateFloatSave() {
   const count = Object.keys(stockChanges).length;
   const el = document.getElementById('floatSave');
   document.getElementById('floatBadge').innerText = `已修改 ${count} 項`;
-  el.className = 'float-save' + (count > 0 && currentPage === 'stock' ? ' visible' : '');
+  const sfCount = Object.values(sfChanges).filter(d => d.url).length;
+  el.className = 'float-save' + ((count > 0 && currentPage === 'stock') || (sfCount > 0 && currentPage === 'orders') ? ' visible' : '');
 }
 
 function addSubStockLimit(rowNum, sub, inputEl, btn) {
@@ -1550,6 +1605,7 @@ function saveStockChanges() {
   // 根據當前頁面決定儲存庫存還是訂貨區
   if (currentPage === 'purchase') { savePurchasedChanges(); return; }
   if (currentPage === 'settle') { saveSettleChanges(); return; }
+  if (currentPage === 'orders') { saveSfChanges(); return; }
 
   const count = Object.keys(stockChanges).length;
   if (!count || !currentStockSheet) return;
@@ -2578,6 +2634,7 @@ function saveOrderEdit(orderId, card) {
 let stockoutCurrentOrderId = '';
 let stockoutCurrentItems = [];
 let globalPhotoMap = {};
+const sfChanges = {}; // { orderId: { url, weight } } 賣貨便批量暫存
 
 function openStockoutModal(orderId) {
   const summary = (window._orderSummaryMap || {})[orderId] || '';
@@ -2678,6 +2735,129 @@ function sendStockoutInquiry() {
     btn.innerText = '📧 發送缺貨通知';
     btn.disabled = false;
   });
+}
+
+
+// ═══════════════════════════════════════════════════════
+// 賣貨便備貨功能
+// ═══════════════════════════════════════════════════════
+
+// 運費計算：NT$20/50g，按比例，全部進位
+function sfCalcFee(orderId) {
+  const w = parseFloat(document.getElementById('sf-weight-' + orderId).value) || 0;
+  const feeEl = document.getElementById('sf-fee-' + orderId);
+  if (!w) { feeEl.innerText = '-'; return; }
+  const fee = Math.ceil(w / 50 * 20);
+  feeEl.innerText = 'NT$ ' + fee;
+  // 記錄到暫存
+  if (!sfChanges[orderId]) sfChanges[orderId] = {};
+  sfChanges[orderId].weight = w;
+  sfChanges[orderId].fee = fee;
+  updateFloatSave();
+}
+
+// SHA-1 for Cloudinary signature
+async function sha1(str) {
+  const buf = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Cloudinary 上傳
+async function sfUploadImage(orderId) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.capture = 'environment'; // 優先後鏡頭（手機）
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const btn = document.querySelector(`#sf-${orderId} .sf-img-btn`);
+    btn.innerText = '⏳ 上傳中...';
+    btn.disabled = true;
+
+    try {
+      const timestamp = Math.round(Date.now() / 1000);
+      const sigStr = `timestamp=${timestamp}${CLOUDINARY_SECRET}`;
+      const signature = await sha1(sigStr);
+
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('api_key', CLOUDINARY_KEY);
+      fd.append('timestamp', timestamp);
+      fd.append('signature', signature);
+
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, {
+        method: 'POST',
+        body: fd
+      });
+      const data = await res.json();
+
+      if (data.secure_url) {
+        // 取 .jpg 格式 URL
+        const jpgUrl = data.secure_url.replace(/\.[^.]+$/, '.jpg');
+
+        // 顯示預覽
+        const preview = document.getElementById('sf-preview-' + orderId);
+        preview.src = jpgUrl;
+        preview.style.display = 'block';
+
+        // 顯示 URL
+        const urlRow = document.getElementById('sf-url-row-' + orderId);
+        urlRow.style.display = 'block';
+        const urlEl = document.getElementById('sf-url-' + orderId);
+        urlEl.innerText = jpgUrl;
+        urlEl.onclick = () => { navigator.clipboard.writeText(jpgUrl); urlEl.style.color = '#16a34a'; setTimeout(() => urlEl.style.color = '', 1500); };
+        urlEl.style.cursor = 'pointer';
+        urlEl.title = '點擊複製';
+
+        // 暫存
+        if (!sfChanges[orderId]) sfChanges[orderId] = {};
+        sfChanges[orderId].url = jpgUrl;
+        updateFloatSave();
+
+        // 高亮 section
+        document.getElementById('sf-' + orderId).classList.add('sf-changed');
+        btn.innerText = '✓ 已上傳';
+        setTimeout(() => { btn.innerText = '📷 重新上傳'; btn.disabled = false; }, 2000);
+      } else {
+        throw new Error(data.error?.message || '上傳失敗');
+      }
+    } catch(err) {
+      alert('上傳失敗：' + err.message);
+      btn.innerText = '📷 選擇圖片';
+      btn.disabled = false;
+    }
+  };
+  input.click();
+}
+
+// 批量儲存賣貨便資料（S=圖片URL, F=運費, W=重量）
+async function saveSfChanges() {
+  const items = Object.entries(sfChanges)
+    .filter(([id, d]) => d.url || d.fee || d.weight)
+    .map(([orderId, d]) => ({ orderId, url: d.url || '', fee: d.fee || 0, weight: d.weight || 0 }));
+  if (!items.length) { alert('沒有待儲存的資料'); return; }
+
+  const btn = document.querySelector('.float-btn');
+  const orig = btn?.innerText;
+  if (btn) { btn.innerText = '儲存中...'; btn.disabled = true; }
+
+  try {
+    await fetch(GAS, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'saveSfData', items })
+    });
+    items.forEach(({ orderId }) => {
+      sfChanges[orderId] = {};
+      document.getElementById('sf-' + orderId)?.classList.remove('sf-changed');
+    });
+    if (btn) btn.innerText = `✓ 儲存 ${items.length} 筆`;
+  } catch(e) {
+    alert('儲存失敗：' + e.message);
+  }
+  setTimeout(() => { if (btn) { btn.innerText = orig; btn.disabled = false; } updateFloatSave(); }, 2000);
 }
 
 function sendManualReminder(orderId, btn) {
