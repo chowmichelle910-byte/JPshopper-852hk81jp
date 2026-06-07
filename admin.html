@@ -1120,7 +1120,7 @@ async function loadSheetList() {
 }
 
 // ── Navigation ──
-const pageTitles = { orders:'所有訂單', stock:'庫存管理', purchase:'訂貨區', settle:'結算區', profit:'盈利計算', events:'建立活動', products:'上架商品' };
+const pageTitles = { orders:'所有訂單', refund:'退款區', stock:'庫存管理', purchase:'訂貨區', settle:'結算區', profit:'盈利計算', events:'建立活動', products:'上架商品' };
 function goto(page) {
   currentPage = page;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -3074,7 +3074,6 @@ function renderRefundCards() {
       return `<div class="refund-item">
         <img class="refund-item-img" src="${img}" onerror="this.src='${fallback}'" />
         <div class="refund-item-name">${name}<div style="font-size:11px;color:#aaa;">× ${it.qty} 件</div></div>
-        <div class="refund-item-price">NT$ ${((order.stockoutAmountPerItem?.[it.name+(it.sub||'')]||0)).toLocaleString()}</div>
       </div>`;
     }).join('');
 
@@ -3084,9 +3083,26 @@ function renderRefundCards() {
     const btnDisabled = (!hasProof && refundTab === 'pending') ? 'disabled' : '';
 
     let purchasedNote = '';
-    if (!isFullOos) {
-      const purchNames = purchItems.map(it => it.name + (it.sub ? ` (${it.sub})` : '') + ' × ' + it.qty).join('、');
-      purchasedNote = `<div style="font-size:12px;color:#6b7280;background:#f9fafb;border-radius:6px;padding:8px 10px;margin:8px 0;">✅ 已成功購入：${purchNames}（到貨後另行通知）</div>`;
+    if (!isFullOos && purchItems.length > 0) {
+      const purchRows = purchItems.map(it => {
+        const img = photoLookup[it.name] || fallback;
+        const name = it.name + (it.sub ? ` (${it.sub})` : '');
+        return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #dcfce7;">
+          <img src="${img}" onerror="this.src='${fallback}'"
+            style="width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid #eee;flex-shrink:0;" />
+          <div style="flex:1;">
+            <div style="font-size:13px;font-weight:600;color:#111;">${name}</div>
+            <div style="font-size:11px;color:#888;">× ${it.qty} 件</div>
+          </div>
+        </div>`;
+      }).join('');
+      purchasedNote = `<div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px 14px;margin:10px 0;">
+        <div style="font-size:11px;font-weight:700;color:#16a34a;letter-spacing:1px;margin-bottom:8px;">✅ 已成功購入商品</div>
+        ${purchRows}
+        <div style="font-size:12px;color:#6b7280;margin-top:8px;padding-top:8px;border-top:1px solid #dcfce7;">
+          📦 商品到達台灣後，我們會另行發送賣貨便取件通知，請留意 Email。
+        </div>
+      </div>`;
     }
 
     const isDone = (order.remark||'').includes('已退款');
