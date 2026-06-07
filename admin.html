@@ -547,6 +547,15 @@
     .refund-tab { padding:6px 16px; border-radius:20px; font-size:13px; border:1px solid #e5e7eb; background:#fff; color:#555; cursor:pointer; }
     .refund-tab.active { background:#111; color:#fff; border-color:#111; }
 
+    /* 退款區：銀行資料 */
+    .bank-info-row { display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px solid #fef2f2; }
+    .bank-info-label { font-size:11px; color:#9ca3af; width:90px; flex-shrink:0; }
+    .bank-info-val { font-size:13px; font-weight:600; color:#111; flex:1; }
+    .bank-info-val.empty { color:#d1d5db; font-style:italic; font-weight:400; }
+    .copy-btn { padding:2px 8px; background:#f3f4f6; border:1px solid #e5e7eb; border-radius:4px; font-size:10px; color:#6b7280; cursor:pointer; flex-shrink:0; white-space:nowrap; }
+    .copy-btn:active { background:#e5e7eb; }
+    .copy-btn.copied { background:#d1fae5; border-color:#6ee7b7; color:#065f46; }
+
     .sf-section { padding:8px 12px 10px; background:#f8faff; border-top:1px dashed #c7d8f8; }
     .sf-cols { display:flex; flex-direction:row; align-items:flex-start; gap:8px; }
     .sf-col { display:flex; flex-direction:column; align-items:center; background:#fff; border-radius:8px; padding:6px; border:1px solid #e0ecff; gap:4px; }
@@ -3125,6 +3134,21 @@ function renderRefundCards() {
           <div class="refund-total-amount">NT$ ${(order.stockoutAmt||order.stockoutAmount||0).toLocaleString()}</div>
         </div>
         ${purchasedNote}
+        ${!isDone ? `
+        <div style="background:#fafafa;border:1px solid #f3f4f6;border-radius:8px;padding:10px 12px;margin:8px 0;">
+          <div style="font-size:11px;font-weight:700;color:#9ca3af;letter-spacing:1px;margin-bottom:6px;">🏦 客人退款資料</div>
+          ${[
+            {label:'銀行簡稱',    val: order.refundBankName||''},
+            {label:'匯款銀行代碼', val: order.refundBankCode||''},
+            {label:'銀行帳號',    val: order.refundBankAcc||''},
+            {label:'受款人戶名',   val: order.refundAccName||''},
+          ].map(({label, val}) => `
+            <div class="bank-info-row">
+              <span class="bank-info-label">${label}</span>
+              <span class="bank-info-val ${val ? '' : 'empty'}">${val || '（未填寫）'}</span>
+              ${val ? `<button class="copy-btn" onclick="copyBankInfo(this,'${val.replace(/'/g, "\'")}')">複製</button>` : ''}
+            </div>`).join('')}
+        </div>` : ''}
         ${isDone ? `<div style="font-size:12px;color:#16a34a;font-weight:600;padding:8px 0;">✅ 已退款完成</div>` : `
         <div class="refund-actions">
           <button class="refund-upload-btn ${proofUrl ? 'done' : ''}" onclick="rfUploadPhoto('${order.id}', this)">
@@ -3167,6 +3191,25 @@ async function rfUploadPhoto(orderId, btn) {
     } catch(err) { alert('上傳失敗：' + err.message); btn.innerText = '📷 上傳退款截圖'; btn.disabled = false; }
   };
   input.click();
+}
+
+function copyBankInfo(btn, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    btn.innerText = '✓';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.innerText = '複製'; btn.classList.remove('copied'); }, 1500);
+  }).catch(() => {
+    // fallback
+    const el = document.createElement('textarea');
+    el.value = text;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    btn.innerText = '✓';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.innerText = '複製'; btn.classList.remove('copied'); }, 1500);
+  });
 }
 
 function sendRefundConfirm(orderId, btn) {
