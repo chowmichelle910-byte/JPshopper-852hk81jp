@@ -308,6 +308,8 @@
     .resend-btn { padding: 5px 10px; background: none; border: 1px solid var(--border); border-radius: 6px; font-size: 11px; font-weight: 600; color: var(--muted); cursor: pointer; transition: all 0.15s; }
     .stockout-inquiry-btn { padding: 5px 10px; background: none; border: 1px solid #fed7aa; border-radius: 6px; font-size: 11px; font-weight: 600; color: #c2410c; cursor: pointer; transition: all 0.15s; }
     .stockout-inquiry-btn:hover { background: #fff7ed; }
+    .arrival-notify-btn { padding: 5px 10px; background: none; border: 1px solid #a7f3d0; border-radius: 6px; font-size: 11px; font-weight: 600; color: #059669; cursor: pointer; transition: all 0.15s; }
+    .arrival-notify-btn:hover { background: #f0fdf4; }
     /* 缺貨詢問彈窗 */
     .stockout-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:600; align-items:center; justify-content:center; padding:16px; }
     .stockout-modal.open { display:flex; }
@@ -622,7 +624,7 @@
               <button class="filter-btn active-filter hk" onclick="setFilter('hk','all',this)">全部</button>
               <button class="filter-btn" onclick="setFilter('hk','unpaid',this)">未付款</button>
               <button class="filter-btn" onclick="setFilter('hk','paid',this)">已付款</button>
-              <button class="filter-btn" onclick="setFilter('hk','shipped',this)">已寄出</button>
+              <button class="filter-btn" onclick="setFilter('hk','shipped',this)">已到貨</button>
               <button class="filter-btn" onclick="setFilter('hk','cancelled',this)">已取消</button>
             </div>
           </div>
@@ -649,9 +651,15 @@
               <button class="filter-btn active-filter tw" onclick="setFilter('tw','all',this)">全部</button>
               <button class="filter-btn" onclick="setFilter('tw','unpaid',this)">未付款</button>
               <button class="filter-btn" onclick="setFilter('tw','paid',this)">已付款</button>
-              <button class="filter-btn" onclick="setFilter('tw','shipped',this)">已寄出</button>
+              <button class="filter-btn" onclick="setFilter('tw','shipped',this)">已到貨</button>
+              <button class="filter-btn" onclick="setFilter('tw','notified',this)">已通知</button>
+              <button class="filter-btn" onclick="setFilter('tw','ordered',this)">已下單</button>
               <button class="filter-btn" onclick="setFilter('tw','cancelled',this)">已取消</button>
             </div>
+          </div>
+          <div id="tw-bulk-action" style="display:none; padding:6px 16px 0; justify-content:flex-end;">
+            <button class="topbar-btn" style="background:#10b981;color:#fff;border-color:#10b981;font-size:12px;"
+              onclick="sendAllArrivalNotifications()">🎉 全部發送到貨通知</button>
           </div>
           <div style="padding:10px 16px 0; display:flex; gap:8px; align-items:center;">
             <input id="searchTW" type="text" placeholder="🔍 搜尋姓名 / 電郵 / 手機末3碼..."
@@ -1053,12 +1061,7 @@ function renderAllOrders() {
 }
 
 function startAdminAutoRefresh() {
-  setInterval(() => {
-    // 只在訂單頁自動重新整理，其他頁面不打擾
-    if (currentPage === 'orders') {
-      fetchOrders();
-    }
-  }, 120000); // 每 120 秒
+  // 自動更新已停用
 }
 
 async function loadSheetList() {
@@ -1286,6 +1289,7 @@ function renderOrders(orders, bodyId, region, cls) {
           <button class="resend-btn" data-oid="${order.id}" onclick="resendPendingEmail(this.dataset.oid, this)">重發確認信</button>
           ${!isPaid ? `<button class="reminder-btn" data-oid="${order.id}" onclick="sendManualReminder(this.dataset.oid, this)">⚠️ 催款</button>` : ''}
           ${isPaid ? `<button class="stockout-inquiry-btn" onclick="openStockoutModal('${order.id}')">📦 缺貨通知</button>` : ''}
+          ${(order.status === '已到貨' || order.status === '已通知') ? `<button class="arrival-notify-btn" data-oid="${order.id}" onclick="sendArrivalNotification(this.dataset.oid, this)">🎉 到貨通知</button>` : ''}
           <button class="cancel-order-btn" data-oid="${order.id}" data-sum="${encodeURIComponent(order.summary || '')}" onclick="openCancelModal(this.dataset.oid, decodeURIComponent(this.dataset.sum))">取消訂單</button>
           <button id="btn-${order.id}" class="ocard-status-btn ${isPaid ? 'paid' : 'unpaid'}"
             ${isPaid ? 'disabled' : `onclick="confirmPayment('${order.id}')"`}>
@@ -2287,6 +2291,10 @@ function setFilter(region, filter, btn) {
   });
   btn.className = 'filter-btn ' + activeClass;
 
+  // 全部發送按鈕只在 TW 已到貨時顯示
+  const bulkDiv = document.getElementById('tw-bulk-action');
+  if (bulkDiv) bulkDiv.style.display = (region === 'tw' && filter === 'shipped') ? 'flex' : 'none';
+
   applyFilter(region);
 }
 
@@ -2301,7 +2309,9 @@ function applyFilter(region) {
     if (filter === 'all')      return true;
     if (filter === 'unpaid')   return s === '待處理';
     if (filter === 'paid')     return s === '已收款' || s === '已付款';
-    if (filter === 'shipped')  return s === '已寄出';
+    if (filter === 'shipped')  return s === '已到貨';
+    if (filter === 'notified') return s === '已通知';
+    if (filter === 'ordered')  return s === '已下單';
     if (filter === 'cancelled')return s === '已取消';
     return true;
   });
@@ -2882,6 +2892,45 @@ async function saveSfChanges() {
     alert('儲存失敗：' + e.message);
   }
   setTimeout(() => { if (btn) { btn.innerText = orig; btn.disabled = false; } updateFloatSave(); }, 2000);
+}
+
+async function sendAllArrivalNotifications() {
+  const arrivedOrders = [...allTWOrders].filter(o => o.status === '已到貨');
+  if (!arrivedOrders.length) { alert('沒有「已到貨」訂單'); return; }
+  if (!confirm(`確定要對 ${arrivedOrders.length} 筆「已到貨」訂單全部發送到貨通知嗎？`)) return;
+
+  let success = 0;
+  for (const order of arrivedOrders) {
+    try {
+      await fetch(GAS, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'sendArrivalNotification', orderId: order.id })
+      });
+      success++;
+      await new Promise(r => setTimeout(r, 500)); // 避免發送太快
+    } catch(e) { console.error(e); }
+  }
+  alert(`✅ 已發送 ${success} / ${arrivedOrders.length} 筆到貨通知`);
+  fetchOrders(); // 重新載入訂單
+}
+
+function sendArrivalNotification(orderId, btn) {
+  if (!confirm('確定要發送「到貨通知」給此訂單的客人嗎？')) return;
+  btn.innerText = '發送中...';
+  btn.disabled = true;
+  fetch(GAS, {
+    method: 'POST', mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'sendArrivalNotification', orderId })
+  }).then(() => {
+    btn.innerText = '✓ 已發送';
+    setTimeout(() => { btn.innerText = '🎉 到貨通知'; btn.disabled = false; }, 3000);
+  }).catch(() => {
+    alert('❌ 發送失敗');
+    btn.innerText = '🎉 到貨通知';
+    btn.disabled = false;
+  });
 }
 
 function sendManualReminder(orderId, btn) {
