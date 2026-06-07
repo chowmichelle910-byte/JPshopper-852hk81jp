@@ -3014,9 +3014,9 @@ async function loadRefundOrders() {
     const data = await res.json();
     const orders = (data.orders || data).slice().reverse();
 
-    // 篩選：Q欄含「已寄出缺貨通知」且尚未完全取消
+    // 篩選：Q欄含「已寄出缺貨通知」即顯示，不限狀態
     allRefundOrders = orders.filter(o =>
-      (o.remark || '').includes('已寄出缺貨通知') && o.status !== '已取消'
+      (o.remark || '').includes('已寄出缺貨通知')
     );
 
     const pending = allRefundOrders.filter(o => !((o.remark||'').includes('已退款')));
