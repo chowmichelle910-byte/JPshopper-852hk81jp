@@ -3012,11 +3012,11 @@ async function loadRefundOrders() {
   try {
     const res = await fetch(GAS + '?action=getAdminOrders');
     const data = await res.json();
-    const orders = [...(data.hk||[]), ...(data.tw||[])];
+    const orders = (data.orders || data).slice().reverse();
 
-    // 篩選：Q欄含「已寄出缺貨通知」且尚未退款
+    // 篩選：Q欄含「已寄出缺貨通知」且尚未完全取消
     allRefundOrders = orders.filter(o =>
-      (o.remark || '').includes('已寄出缺貨通知') && o.status !== '已取消訂單'
+      (o.remark || '').includes('已寄出缺貨通知') && o.status !== '已取消'
     );
 
     const pending = allRefundOrders.filter(o => !((o.remark||'').includes('已退款')));
@@ -3106,7 +3106,7 @@ function renderRefundCards() {
         ${oosRows}
         <div class="refund-total-row">
           <div class="refund-total-label">退款金額</div>
-          <div class="refund-total-amount">NT$ ${(order.stockoutAmount||0).toLocaleString()}</div>
+          <div class="refund-total-amount">NT$ ${(order.stockoutAmt||order.stockoutAmount||0).toLocaleString()}</div>
         </div>
         ${purchasedNote}
         ${isDone ? `<div style="font-size:12px;color:#16a34a;font-weight:600;padding:8px 0;">✅ 已退款完成</div>` : `
