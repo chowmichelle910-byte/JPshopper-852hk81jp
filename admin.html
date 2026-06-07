@@ -518,7 +518,23 @@
     .customer-name { font-weight: 700; }
     .customer-meta { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.5; }
     .last3-chip { background: #e3f2fd; color: var(--tw); font-weight: 700; padding: 1px 6px; border-radius: 4px; font-size: 11px; }
-  </style>
+  
+    .sf-section { padding:8px 12px 10px; background:#f8faff; border-top:1px dashed #c7d8f8; }
+    .sf-cols { display:flex; flex-direction:row; align-items:flex-start; gap:8px; }
+    .sf-col { display:flex; flex-direction:column; align-items:center; background:#fff; border-radius:8px; padding:6px; border:1px solid #e0ecff; gap:4px; }
+    .sf-col-label { font-size:11px; color:#9ca3af; font-weight:500; }
+    .sf-col-img { flex:0 0 auto; width:60px; }
+    .sf-col-weight { flex:0 0 auto; width:72px; }
+    .sf-col-fee { flex:1; min-width:56px; }
+    .sf-img-btn { width:44px; height:44px; border-radius:6px; background:#eff6ff; border:1.5px dashed #93c5fd; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:20px; overflow:hidden; padding:0; }
+    .sf-img-btn img { width:44px; height:44px; object-fit:cover; border-radius:6px; }
+    .sf-weight-wrap { display:flex; align-items:center; gap:3px; }
+    .sf-input { width:42px; padding:4px; border:1.5px solid #bfdbfe; border-radius:6px; font-size:13px; font-weight:600; text-align:center; color:#1d4ed8; background:#fff; outline:none; }
+    .sf-unit { font-size:11px; color:#9ca3af; }
+    .sf-fee-val { font-size:15px; font-weight:700; color:#1d4ed8; }
+    .sf-url-copy { font-size:9px; color:#3b82f6; cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:2px 3px; background:#eff6ff; border-radius:3px; display:none; max-width:50px; text-align:center; }
+    .sf-changed { background:#eef4ff; }
+</style>
 </head>
 <body>
 
@@ -3340,48 +3356,3 @@ function closeSidebar() {
 </script>
 </body>
 </html>
-    /* 賣貨便準備區 */
-    /* 賣貨便準備區 */
-    .sf-section {
-      padding:8px 12px 10px;
-      background:#f8faff;
-      border-top:1px dashed #c7d8f8;
-    }
-    .sf-cols {
-      display:flex; align-items:center; gap:8px;
-    }
-    .sf-col {
-      display:flex; flex-direction:column; align-items:center;
-      background:#fff; border-radius:8px; padding:6px 6px;
-      border:1px solid #e0ecff; gap:4px;
-    }
-    .sf-col-label {
-      font-size:11px; color:#9ca3af; font-weight:500;
-    }
-    .sf-col-img { flex:0 0 48px; }
-    .sf-col-weight { flex:0 0 72px; }
-    .sf-col-fee { flex:1; min-width:60px; }
-    .sf-img-btn {
-      width:44px; height:44px; border-radius:6px;
-      background:#eff6ff; border:1.5px dashed #93c5fd;
-      cursor:pointer; display:flex; align-items:center;
-      justify-content:center; font-size:18px;
-      overflow:hidden; padding:0; flex-shrink:0;
-    }
-    .sf-img-btn img { width:44px; height:44px; object-fit:cover; border-radius:6px; }
-    .sf-weight-wrap { display:flex; align-items:center; gap:3px; }
-    .sf-input {
-      width:44px; padding:4px 4px; border:1.5px solid #bfdbfe;
-      border-radius:6px; font-size:13px; font-weight:600;
-      text-align:center; color:#1d4ed8; background:#fff; outline:none;
-    }
-    .sf-input:focus { border-color:#3b82f6; }
-    .sf-unit { font-size:11px; color:#9ca3af; }
-    .sf-fee-val { font-size:15px; font-weight:700; color:#1d4ed8; }
-    .sf-url-copy {
-      font-size:9px; color:#3b82f6; cursor:pointer;
-      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-      padding:2px 4px; background:#eff6ff; border-radius:3px;
-      display:none; max-width:40px; text-align:center;
-    }
-    .sf-changed { background:#eef4ff !important; }
