@@ -521,6 +521,32 @@
     .customer-meta { font-size: 12px; color: var(--muted); margin-top: 2px; line-height: 1.5; }
     .last3-chip { background: #e3f2fd; color: var(--tw); font-weight: 700; padding: 1px 6px; border-radius: 4px; font-size: 11px; }
   
+    /* 退款區 */
+    .refund-card { background:#fff; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,0.08); overflow:hidden; margin-bottom:16px; }
+    .refund-card-header { padding:10px 14px; background:#fff8f0; border-bottom:1px solid #fed7aa; display:flex; justify-content:space-between; align-items:center; }
+    .refund-order-id { font-size:13px; font-weight:700; color:#c2410c; }
+    .refund-customer { font-size:11px; color:#888; margin-top:2px; }
+    .refund-type-badge { font-size:10px; background:#fff3e0; color:#c2410c; padding:2px 7px; border-radius:4px; font-weight:600; flex-shrink:0; }
+    .refund-card-body { padding:14px; }
+    .refund-item { display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #fef2f2; }
+    .refund-item:last-child { border-bottom:none; }
+    .refund-item-img { width:48px; height:48px; object-fit:cover; border-radius:7px; border:1px solid #eee; flex-shrink:0; }
+    .refund-item-name { flex:1; font-size:13px; font-weight:600; color:#333; line-height:1.4; }
+    .refund-item-price { font-size:13px; font-weight:700; color:#dc2626; white-space:nowrap; }
+    .refund-total-row { display:flex; justify-content:space-between; align-items:center; background:#fff5f5; border:1px solid #fecaca; border-radius:8px; padding:10px 12px; margin:10px 0; }
+    .refund-total-label { font-size:13px; color:#333; font-weight:600; }
+    .refund-total-amount { font-size:20px; font-weight:800; color:#dc2626; }
+    .refund-actions { display:flex; gap:8px; align-items:center; margin-top:10px; }
+    .refund-upload-btn { padding:7px 12px; background:#f0f7ff; border:1.5px dashed #93c5fd; border-radius:7px; font-size:12px; color:#1d4ed8; cursor:pointer; font-weight:600; }
+    .refund-upload-btn.done { background:#f0fdf4; border:1.5px solid #86efac; color:#16a34a; }
+    .refund-proof-thumb { width:40px; height:40px; object-fit:cover; border-radius:6px; border:1px solid #e5e7eb; }
+    .refund-sent-btn { padding:7px 14px; background:#dc2626; color:#fff; border:none; border-radius:7px; font-size:13px; font-weight:700; cursor:pointer; margin-left:auto; }
+    .refund-sent-btn:disabled { background:#d1d5db; cursor:default; }
+    .refund-section-label { font-size:11px; font-weight:700; color:#9ca3af; letter-spacing:1px; margin-bottom:8px; }
+    .refund-tabs { display:flex; gap:8px; margin-bottom:16px; }
+    .refund-tab { padding:6px 16px; border-radius:20px; font-size:13px; border:1px solid #e5e7eb; background:#fff; color:#555; cursor:pointer; }
+    .refund-tab.active { background:#111; color:#fff; border-color:#111; }
+
     .sf-section { padding:8px 12px 10px; background:#f8faff; border-top:1px dashed #c7d8f8; }
     .sf-cols { display:flex; flex-direction:row; align-items:flex-start; gap:8px; }
     .sf-col { display:flex; flex-direction:column; align-items:center; background:#fff; border-radius:8px; padding:6px; border:1px solid #e0ecff; gap:4px; }
@@ -569,6 +595,10 @@
         <span class="nav-icon">📋</span> 所有訂單
         <span class="nav-badge" id="badgeTotal">—</span>
       </div>
+      <div class="nav-item" onclick="goto('refund'); closeSidebar();" id="nav-refund">
+        <span class="nav-icon">💸</span> 退款區
+        <span class="nav-badge" id="refundBadge" style="display:none;"></span>
+      </div>
 
       <div class="nav-section-label">商品管理</div>
       <div class="nav-item" onclick="goto('stock'); closeSidebar();" id="nav-stock">
@@ -612,6 +642,18 @@
     <div class="content">
 
       <!-- ════ PAGE: 訂單 ════ -->
+      <div class="page" id="page-refund">
+        <div style="padding:24px; max-width:700px;">
+          <div style="font-size:20px; font-weight:700; color:#111; margin-bottom:4px;">💸 退款區</div>
+          <div style="font-size:13px; color:#888; margin-bottom:16px;">已發送缺貨通知、尚未完成退款的訂單</div>
+          <div style="display:flex; gap:8px; margin-bottom:16px;">
+            <div class="refund-tab active" id="refundTabPending" onclick="setRefundTab('pending',this)">待退款</div>
+            <div class="refund-tab" id="refundTabDone" onclick="setRefundTab('done',this)">已退款</div>
+          </div>
+          <div id="refundCardContainer"><div style="color:#aaa;padding:20px;text-align:center;">載入中...</div></div>
+        </div>
+      </div>
+
       <div class="page active" id="page-orders">
 
         <!-- HK 訂單 -->
@@ -979,6 +1021,7 @@ document.getElementById('pwInput').addEventListener('keydown', e => { if (e.key 
 // ── Init ──
 async function init() {
   await loadSheetList();
+  loadRefundOrders(); // 載入退款 badge 數量
   fetchOrders();
   startAdminAutoRefresh();
   // 載入已購買數量（用於訂單頁面的欠貨顯示）
@@ -1086,6 +1129,8 @@ function goto(page) {
   document.getElementById('nav-' + page).classList.add('active');
   document.getElementById('topbarTitle').innerText = pageTitles[page];
   document.getElementById('refreshBtn').style.display = page === 'orders' ? 'inline-flex' : 'none';
+  // 退款區載入
+  if (page === 'refund') loadRefundOrders();
   // 切換頁面時重新評估浮動按鈕是否該顯示
   const floatEl = document.getElementById('floatSave');
   const hasStock = Object.keys(stockChanges).length > 0;
@@ -2949,6 +2994,172 @@ function sendArrivalNotification(orderId, btn) {
     btn.innerText = '🎉 到貨通知';
     btn.disabled = false;
   });
+}
+
+
+// ═══════════════════════════════════════════════════════
+// 退款區功能
+// ═══════════════════════════════════════════════════════
+let refundTab = 'pending';
+let allRefundOrders = [];
+let refundPhotoMap = {}; // { orderId: { url, uploaded } }
+
+async function loadRefundOrders() {
+  const container = document.getElementById('refundCardContainer');
+  if (!container) return;
+  container.innerHTML = '<div style="color:#aaa;padding:20px;text-align:center;">載入中...</div>';
+
+  try {
+    const res = await fetch(GAS + '?action=getAdminOrders');
+    const data = await res.json();
+    const orders = [...(data.hk||[]), ...(data.tw||[])];
+
+    // 篩選：Q欄含「已寄出缺貨通知」且尚未退款
+    allRefundOrders = orders.filter(o =>
+      (o.remark || '').includes('已寄出缺貨通知') && o.status !== '已取消訂單'
+    );
+
+    const pending = allRefundOrders.filter(o => !((o.remark||'').includes('已退款')));
+    const done    = allRefundOrders.filter(o =>  (o.remark||'').includes('已退款'));
+
+    // 更新 badge
+    const badge = document.getElementById('refundBadge');
+    if (badge) {
+      badge.innerText = pending.length;
+      badge.style.display = pending.length > 0 ? 'inline' : 'none';
+    }
+
+    renderRefundCards();
+  } catch(e) {
+    container.innerHTML = '<div style="color:#e53e3e;padding:20px;">❌ 載入失敗：' + e.message + '</div>';
+  }
+}
+
+function setRefundTab(tab, btn) {
+  refundTab = tab;
+  document.querySelectorAll('.refund-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderRefundCards();
+}
+
+function renderRefundCards() {
+  const container = document.getElementById('refundCardContainer');
+  if (!container) return;
+  const fallback = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%221%22%20height%3D%221%22%3E%3Crect%20fill%3D%22%23eee%22%20width%3D%221%22%20height%3D%221%22%2F%3E%3C%2Fsvg%3E';
+
+  const list = refundTab === 'pending'
+    ? allRefundOrders.filter(o => !((o.remark||'').includes('已退款')))
+    : allRefundOrders.filter(o =>  (o.remark||'').includes('已退款'));
+
+  if (!list.length) {
+    container.innerHTML = '<div style="color:#aaa;padding:30px;text-align:center;">' + (refundTab==='pending' ? '沒有待退款訂單 🎉' : '沒有已退款訂單') + '</div>';
+    return;
+  }
+
+  container.innerHTML = '';
+  list.forEach(order => {
+    const oosItems = parseSummaryFrontend(order.stockoutItems || '');
+    const allItems = parseSummaryFrontend(order.summary || '');
+    const oosKeys = new Set(oosItems.map(it => it.name + '|' + (it.sub||'')));
+    const purchItems = allItems.filter(it => !oosKeys.has(it.name + '|' + (it.sub||'')));
+    const isFullOos = purchItems.length === 0;
+
+    const photoLookup = {};
+    (order.productPhotos || []).forEach(p => { if (p.photo?.startsWith('http')) photoLookup[p.name] = p.photo; });
+
+    // 缺貨商品行
+    let oosRows = oosItems.map(it => {
+      const img = photoLookup[it.name] || fallback;
+      const name = it.name + (it.sub ? ` (${it.sub})` : '');
+      return `<div class="refund-item">
+        <img class="refund-item-img" src="${img}" onerror="this.src='${fallback}'" />
+        <div class="refund-item-name">${name}<div style="font-size:11px;color:#aaa;">× ${it.qty} 件</div></div>
+        <div class="refund-item-price">NT$ ${((order.stockoutAmountPerItem?.[it.name+(it.sub||'')]||0)).toLocaleString()}</div>
+      </div>`;
+    }).join('');
+
+    const hasProof = refundPhotoMap[order.id]?.url || order.refundPhoto;
+    const proofUrl = refundPhotoMap[order.id]?.url || order.refundPhoto || '';
+    const proofThumb = proofUrl ? `<img class="refund-proof-thumb" src="${proofUrl}" />` : '';
+    const btnDisabled = (!hasProof && refundTab === 'pending') ? 'disabled' : '';
+
+    let purchasedNote = '';
+    if (!isFullOos) {
+      const purchNames = purchItems.map(it => it.name + (it.sub ? ` (${it.sub})` : '') + ' × ' + it.qty).join('、');
+      purchasedNote = `<div style="font-size:12px;color:#6b7280;background:#f9fafb;border-radius:6px;padding:8px 10px;margin:8px 0;">✅ 已成功購入：${purchNames}（到貨後另行通知）</div>`;
+    }
+
+    const isDone = (order.remark||'').includes('已退款');
+
+    const card = document.createElement('div');
+    card.className = 'refund-card';
+    card.innerHTML = `
+      <div class="refund-card-header">
+        <div>
+          <div class="refund-order-id">${order.id}</div>
+          <div class="refund-customer">${order.name || ''} · ${order.event || ''}</div>
+        </div>
+        <div class="refund-type-badge">${isFullOos ? '全部缺貨' : '部分缺貨'}</div>
+      </div>
+      <div class="refund-card-body">
+        <div class="refund-section-label">⚠️ 缺貨商品（需退款）</div>
+        ${oosRows}
+        <div class="refund-total-row">
+          <div class="refund-total-label">退款金額</div>
+          <div class="refund-total-amount">NT$ ${(order.stockoutAmount||0).toLocaleString()}</div>
+        </div>
+        ${purchasedNote}
+        ${isDone ? `<div style="font-size:12px;color:#16a34a;font-weight:600;padding:8px 0;">✅ 已退款完成</div>` : `
+        <div class="refund-actions">
+          <button class="refund-upload-btn ${proofUrl ? 'done' : ''}" onclick="rfUploadPhoto('${order.id}', this)">
+            ${proofUrl ? '✓ 截圖已上傳' : '📷 上傳退款截圖'}
+          </button>
+          ${proofThumb}
+          <button class="refund-sent-btn" ${btnDisabled} onclick="sendRefundConfirm('${order.id}', this)">已退款 →</button>
+        </div>`}
+      </div>`;
+    container.appendChild(card);
+  });
+}
+
+async function rfUploadPhoto(orderId, btn) {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'image/*';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    btn.innerText = '⏳ 上傳中...'; btn.disabled = true;
+    try {
+      const timestamp = Math.round(Date.now() / 1000);
+      const sigStr = `timestamp=${timestamp}${CLOUDINARY_SECRET}`;
+      const buf = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(sigStr));
+      const sig = Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+      const fd = new FormData();
+      fd.append('file', file); fd.append('api_key', CLOUDINARY_KEY);
+      fd.append('timestamp', timestamp); fd.append('signature', sig);
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD}/image/upload`, { method:'POST', body:fd });
+      const data = await res.json();
+      if (data.secure_url) {
+        const url = data.secure_url.replace(/\.[^.]+$/, '.jpg');
+        refundPhotoMap[orderId] = { url };
+        // 儲存到 AB 欄
+        await fetch(GAS, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ action:'saveRefundPhoto', orderId, photoUrl: url }) });
+        btn.innerText = '✓ 截圖已上傳'; btn.classList.add('done');
+        setTimeout(() => renderRefundCards(), 1000);
+      }
+    } catch(err) { alert('上傳失敗：' + err.message); btn.innerText = '📷 上傳退款截圖'; btn.disabled = false; }
+  };
+  input.click();
+}
+
+function sendRefundConfirm(orderId, btn) {
+  if (!confirm('確定已完成退款並發送退款通知 email？')) return;
+  btn.innerText = '發送中...'; btn.disabled = true;
+  fetch(GAS, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ action:'sendRefundNotification', orderId }) })
+  .then(() => { btn.innerText = '✓ 已完成'; setTimeout(() => loadRefundOrders(), 1500); })
+  .catch(() => { alert('❌ 失敗，請重試'); btn.innerText = '已退款 →'; btn.disabled = false; });
 }
 
 function sendManualReminder(orderId, btn) {
