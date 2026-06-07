@@ -1228,6 +1228,24 @@ function renderOrders(orders, bodyId, region, cls) {
         </div>`;
     });
 
+    // ── 已下單訂單：顯示額外資訊 ──
+    if (order.status === '已下單') {
+      const cm    = order.cm711OrderId   || '';
+      const recip = order.recipientName  || '';
+      const store = order.storeName      || '';
+      const shopUrl = order.shipmentRef  || '';
+      const wt    = order.weight         || 0;
+      const fee   = order.intlFee || (order.shippingFee && order.shippingFee !== order.amount ? order.shippingFee : 0) || 0;
+
+      let orderedHtml = '<div style="margin-top:10px;padding:10px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;font-size:12px;line-height:2;">';
+      if (shopUrl) orderedHtml += `<div><span style="color:#6b7280;">賣貨便</span> <a href="${shopUrl}" target="_blank" style="color:#059669;word-break:break-all;">${shopUrl}</a></div>`;
+      if (wt || fee) orderedHtml += `<div><span style="color:#6b7280;">重量</span> <strong>${wt}g</strong> &nbsp; <span style="color:#6b7280;">運費</span> <strong>NT$ ${fee}</strong></div>`;
+      if (cm) orderedHtml += `<div><span style="color:#6b7280;">賣貨便訂單</span> <strong style="font-family:monospace;">${cm}</strong></div>`;
+      if (recip || store) orderedHtml += `<div style="margin-top:4px;font-size:14px;font-weight:700;color:#065f46;">${recip ? '👤 '+recip : ''} &nbsp; ${store ? '🏪 '+store+'門市' : ''}</div>`;
+      orderedHtml += '</div>';
+      itemsHtml += orderedHtml;
+    }
+
     // 顯示缺貨商品（T欄 stockoutItems），灰色半透明+刪除線
     const stockoutSummary = order.stockoutItems || '';
     if (stockoutSummary) {
