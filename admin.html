@@ -3253,15 +3253,22 @@ function setPickRegion(r) {
 function renderPickingList() {
   var grid = document.getElementById('pickingGrid');
   if (!grid) return;
-  if (!allOrders || allOrders.length === 0) {
-    grid.innerHTML = '<div style="color:#bbb;font-size:13px;grid-column:1/-1;padding:20px 0;">尚無訂單資料，請先載入訂單</div>';
+  // 使用正確的全域變數 allHKOrders / allTWOrders
+  var srcOrders = pickRegion === 'tw' ? (typeof allTWOrders !== 'undefined' ? allTWOrders : [])
+                                       : (typeof allHKOrders !== 'undefined' ? allHKOrders : []);
+  if (!srcOrders || srcOrders.length === 0) {
+    // 若訂單尚未載入，先 fetch
+    if (typeof allHKOrders === 'undefined' || (allHKOrders.length === 0 && allTWOrders.length === 0)) {
+      grid.innerHTML = '<div style="color:#bbb;font-size:13px;grid-column:1/-1;padding:20px 0;">載入中...</div>';
+      fetchOrders();
+      return;
+    }
+    grid.innerHTML = '<div style="color:#bbb;font-size:13px;grid-column:1/-1;padding:20px 0;">沒有訂單資料</div>';
     return;
   }
-  // 篩選已付款且對應地區
-  var paid = allOrders.filter(function(o) {
-    var isTW = o.pickupType && o.pickupType.indexOf('賣貨便') !== -1 || o.payMethod && o.payMethod.indexOf('郵局') !== -1;
-    var regionMatch = pickRegion === 'tw' ? isTW : !isTW;
-    return (o.status === '已付款' || o.status === '已收款') && regionMatch;
+  // 篩選已付款
+  var paid = srcOrders.filter(function(o) {
+    return o.status === '已付款' || o.status === '已收款';
   });
   document.getElementById('pickCount').innerText = paid.length + ' 張訂單';
   if (paid.length === 0) {
