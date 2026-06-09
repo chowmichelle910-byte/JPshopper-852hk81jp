@@ -3350,112 +3350,63 @@ function printPickingList() {
   var grid = document.getElementById('pickingGrid');
   if (!grid) return;
   var cards = Array.from(grid.querySelectorAll('.picking-card'));
-  if (!cards.length) { window.print(); return; }
+  if (!cards.length) return;
 
-  // A4 portrait: usable 190mm × 277mm (margin 10mm 四邊)
-  // 96dpi: 1mm = 3.7795px
-  // usable height ≈ 1047px, 保守用 940px（留餘量）
-  var PAGE_H_PX = 940;
-  var CARD_GAP = 6; // px
-  // 3欄 + 2個 gap(8px): 每欄 = (719-16)/3 ≈ 234px
-  var COL_W = 234;
-
-  // 在隱藏容器量度每張卡片高度（以列印欄寬為準）
-  var mDiv = document.createElement('div');
-  mDiv.style.cssText = 'position:fixed;top:-9999px;left:0;width:' + COL_W + 'px;visibility:hidden;pointer-events:none;';
+  var COL_W=234, CARD_GAP=6, PAGE_H=940;
+  var mDiv=document.createElement('div');
+  mDiv.style.cssText='position:fixed;top:-9999px;left:0;width:'+COL_W+'px;visibility:hidden;';
   document.body.appendChild(mDiv);
-  var cardHeights = cards.map(function(c) {
-    var cl = c.cloneNode(true);
-    cl.style.marginBottom = '0';
-    mDiv.appendChild(cl);
-    var h = cl.offsetHeight;
-    mDiv.removeChild(cl);
-    return h;
+  var cardH=cards.map(function(c){
+    var cl=c.cloneNode(true);mDiv.appendChild(cl);
+    var h=cl.offsetHeight;mDiv.removeChild(cl);return h;
   });
   document.body.removeChild(mDiv);
 
-  // 分配卡片到頁面×欄（最短欄優先）
-  var pages = [];
-  var colH = [0,0,0];
-  var colCards = [[],[],[]];
-
-  function shortestCol() {
-    return colH[0]<=colH[1]&&colH[0]<=colH[2] ? 0 : colH[1]<=colH[2] ? 1 : 2;
-  }
-  function pushPage() {
-    pages.push({cols:[colCards[0].slice(),colCards[1].slice(),colCards[2].slice()]});
-    colH = [0,0,0]; colCards = [[],[],[]];
-  }
-
-  cards.forEach(function(card, i) {
-    var h = cardHeights[i] + CARD_GAP;
-    var ci = shortestCol();
-    // 如果最短欄加上這張仍超頁，且該欄不是空的 → 換頁
-    if (colH[ci] > 0 && colH[ci] + h > PAGE_H_PX) {
-      pushPage(); ci = 0;
+  var pages=[],colH=[0,0,0],colC=[[],[],[]];
+  function sc(){return colH[0]<=colH[1]&&colH[0]<=colH[2]?0:colH[1]<=colH[2]?1:2;}
+  cards.forEach(function(card,i){
+    var h=cardH[i]+CARD_GAP,ci=sc();
+    if(colH[ci]>0&&colH[ci]+h>PAGE_H){
+      pages.push({c:[colC[0].slice(),colC[1].slice(),colC[2].slice()]});
+      colH=[0,0,0];colC=[[],[],[]];ci=0;
     }
-    colCards[ci].push(card);
-    colH[ci] += h;
+    colC[ci].push(card);colH[ci]+=h;
   });
-  pushPage(); // 最後一頁
+  pages.push({c:[colC[0].slice(),colC[1].slice(),colC[2].slice()]});
 
-  // 建立列印 DOM（螢幕隱藏，列印時顯示）
-  var old = document.getElementById('pick-print-wrap');
-  if (old) document.body.removeChild(old);
-
-  var wrap = document.createElement('div');
-  wrap.id = 'pick-print-wrap';
-
-  pages.forEach(function(pg, pi) {
-    var pageDiv = document.createElement('div');
-    pageDiv.className = 'pick-pg';
-    var colsDiv = document.createElement('div');
-    colsDiv.className = 'pick-pg-cols';
-    for (var ci = 0; ci < 3; ci++) {
-      var colDiv = document.createElement('div');
-      colDiv.className = 'pick-pg-col';
-      pg.cols[ci].forEach(function(card) {
-        var cl = card.cloneNode(true);
-        cl.style.marginBottom = '0';
-        colDiv.appendChild(cl);
-      });
-      colsDiv.appendChild(colDiv);
-    }
-    pageDiv.appendChild(colsDiv);
-    wrap.appendChild(pageDiv);
-  });
-
-  document.body.appendChild(wrap);
-
-  // 注入列印樣式
-  var old_s = document.getElementById('pick-print-style');
-  if (old_s) document.head.removeChild(old_s);
-  var sty = document.createElement('style');
-  sty.id = 'pick-print-style';
-  sty.textContent = [
+  var css=[
     '@page{size:A4 portrait;margin:10mm}',
-    '@media print{',
-    '  body>*:not(#pick-print-wrap){display:none!important}',
-    '  #pick-print-wrap{display:block!important}',
-    '  .pick-pg{break-after:page;page-break-after:always}',
-    '  .pick-pg:last-child{break-after:auto;page-break-after:auto}',
-    '  .pick-pg-cols{display:flex;gap:6px;align-items:flex-start}',
-    '  .pick-pg-col{flex:1;display:flex;flex-direction:column;gap:6px}',
-    '  .picking-card{break-inside:avoid;page-break-inside:avoid;margin-bottom:0!important;display:block!important;width:100%!important}',
-    '}',
-    '#pick-print-wrap{display:none}'
+    'body{margin:0;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;font-size:11px}',
+    '.pg{display:flex;gap:6px;align-items:flex-start;break-after:page;page-break-after:always}',
+    '.pg.last{break-after:auto;page-break-after:auto}',
+    '.col{flex:1;display:flex;flex-direction:column;gap:5px}',
+    '.picking-card{border:1px solid #ccc;border-radius:4px;padding:7px;break-inside:avoid;page-break-inside:avoid}',
+    '.picking-card-header{font-size:10px;font-weight:700;color:#111;margin-bottom:4px}',
+    '.picking-card-divider{border:none;border-top:1px dashed #ccc;margin:3px 0}',
+    '.picking-item{display:flex;align-items:center;gap:5px;margin-bottom:3px}',
+    '.picking-item img{width:30px;height:30px;object-fit:cover;border-radius:3px;border:1px solid #eee;flex-shrink:0;display:block}',
+    '.picking-item-img-placeholder{width:30px;height:30px;background:#f0f0f0;border-radius:3px;flex-shrink:0}',
+    '.picking-item-info{flex:1;min-width:0}',
+    '.picking-item-name{font-size:10px;font-weight:600;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+    '.picking-item-sub{font-size:9px;color:#888}',
+    '.picking-item-qty{font-size:11px;font-weight:700;color:#111;flex-shrink:0}'
   ].join('\n');
-  document.head.appendChild(sty);
 
-  window.print();
+  var body=pages.map(function(pg,pi){
+    var isLast=pi===pages.length-1;
+    var cols=[0,1,2].map(function(ci){
+      return '<div class=\"col\">'+pg.c[ci].map(function(card){return card.outerHTML;}).join('')+'</div>';
+    }).join('');
+    return '<div class=\"pg'+(isLast?' last':'')+'\">' +cols+'</div>';
+  }).join('');
 
-  // 列印後清理
-  setTimeout(function() {
-    var w2 = document.getElementById('pick-print-wrap');
-    var s2 = document.getElementById('pick-print-style');
-    if (w2) document.body.removeChild(w2);
-    if (s2) document.head.removeChild(s2);
-  }, 1500);
+  var html='<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><style>'+css+'</style></head>'
+    +'<body>'+body+'<scr'+'ipt>window.onload=function(){window.print();setTimeout(function(){window.close();},800);};<\/scr'+'ipt></body></html>';
+
+  var pw=window.open('','_blank');
+  if(!pw){alert('請允許彈出視窗後重試');return;}
+  pw.document.write(html);
+  pw.document.close();
 }
 
 function copyBankInfo(btn, text) {
