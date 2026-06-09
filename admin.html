@@ -562,8 +562,8 @@
     .picking-region-btn { padding:6px 18px; border:1.5px solid #ddd; border-radius:20px; background:#fff; font-size:13px; cursor:pointer; }
     .picking-region-btn.active { background:#111; color:#fff; border-color:#111; }
     .picking-print-btn { margin-left:auto; padding:6px 18px; background:#111; color:#fff; border:none; border-radius:20px; font-size:13px; cursor:pointer; }
-    .picking-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; align-items:start; }
-    .picking-card { border:1px solid #ddd; border-radius:6px; padding:10px; background:#fff; break-inside:avoid; page-break-inside:avoid; }
+    .picking-grid { columns:3; column-gap:10px; }
+    .picking-card { border:1px solid #ddd; border-radius:6px; padding:10px; background:#fff; break-inside:avoid; page-break-inside:avoid; -webkit-column-break-inside:avoid; display:inline-block; width:100%; box-sizing:border-box; margin-bottom:10px; }
     .picking-card-header { font-size:11px; font-weight:700; color:#111; margin-bottom:6px; }
     .picking-card-divider { border:none; border-top:1px dashed #ccc; margin:6px 0; }
     .picking-item { display:flex; align-items:center; gap:6px; margin-bottom:5px; }
@@ -579,8 +579,8 @@
       #page-picking, #page-picking * { visibility:visible !important; }
       #page-picking { position:fixed; top:0; left:0; width:100%; padding:8mm; }
       .picking-toolbar { display:none !important; }
-      .picking-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; align-items:start; }
-      .picking-card { border:1px solid #999; padding:7px; font-size:10px; break-inside:avoid; page-break-inside:avoid; }
+      .picking-grid { columns:3; column-gap:6px; }
+      .picking-card { border:1px solid #999; padding:7px; font-size:10px; break-inside:avoid; page-break-inside:avoid; -webkit-column-break-inside:avoid; display:inline-block; width:100%; box-sizing:border-box; margin-bottom:6px; }
       .picking-card-header { font-size:10px; }
       .picking-item img, .picking-item-img-placeholder { width:30px; height:30px; }
       .picking-item-name { font-size:9px; }
