@@ -562,8 +562,8 @@
     .picking-region-btn { padding:6px 18px; border:1.5px solid #ddd; border-radius:20px; background:#fff; font-size:13px; cursor:pointer; }
     .picking-region-btn.active { background:#111; color:#fff; border-color:#111; }
     .picking-print-btn { margin-left:auto; padding:6px 18px; background:#111; color:#fff; border:none; border-radius:20px; font-size:13px; cursor:pointer; }
-    .picking-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-    .picking-card { border:1px solid #ddd; border-radius:6px; padding:10px; background:#fff; page-break-inside:avoid; break-inside:avoid; }
+    .picking-grid { columns:3; column-gap:10px; }
+    .picking-card { border:1px solid #ddd; border-radius:6px; padding:10px; background:#fff; page-break-inside:avoid; break-inside:avoid; margin-bottom:10px; display:inline-block; width:100%; box-sizing:border-box; }
     .picking-card-header { font-size:11px; font-weight:700; color:#111; margin-bottom:6px; }
     .picking-card-divider { border:none; border-top:1px dashed #ccc; margin:6px 0; }
     .picking-item { display:flex; align-items:center; gap:6px; margin-bottom:5px; }
@@ -579,7 +579,7 @@
       #page-picking, #page-picking * { visibility:visible !important; }
       #page-picking { position:fixed; top:0; left:0; width:100%; padding:8mm; }
       .picking-toolbar { display:none !important; }
-      .picking-grid { grid-template-columns:repeat(3,1fr); gap:6px; }
+      .picking-grid { columns:3; column-gap:6px; }
       .picking-card { border:1px solid #999; padding:7px; font-size:10px; }
       .picking-card-header { font-size:10px; }
       .picking-item img, .picking-item-img-placeholder { width:30px; height:30px; }
@@ -3280,8 +3280,19 @@ function renderPickingList() {
     var photoMap = {};
     if (o.productPhotos) o.productPhotos.forEach(function(p){ if(p.photo) photoMap[p.name]=p.photo; });
     var items = parseSummaryStr(o.summary || '');
+    // 模糊 photo 查找（忽略大小寫和空格）
+    function findPickPhoto(name) {
+      if (!name) return '';
+      if (photoMap[name]) return photoMap[name];
+      var clean = name.toLowerCase().replace(/[\s\u3000]/g,'');
+      for (var k in photoMap) {
+        var kc = k.toLowerCase().replace(/[\s\u3000]/g,'');
+        if (clean === kc || clean.indexOf(kc) !== -1 || kc.indexOf(clean) !== -1) return photoMap[k];
+      }
+      return '';
+    }
     var itemRows = items.map(function(it) {
-      var photo = photoMap[it.name] || '';
+      var photo = findPickPhoto(it.name);
       var imgHtml = photo
         ? '<img src="' + photo + '" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid #eee;flex-shrink:0;display:block;">'
         : '<div class="picking-item-img-placeholder"></div>';
@@ -3297,8 +3308,11 @@ function renderPickingList() {
 }
 
 // 解析 summary 字串成 [{name,sub,qty}]
+// 格式: "商品名 ( x2)" 或 "商品名(含括號) (款式 x1)" 或 "商品名 (XXL x1)"
+// 款式規則：只有 S/M/L/XL/XXL/Free Size 等才是款式，其他括號是商品名的一部分
 function parseSummaryStr(s) {
   if (!s) return [];
+  var SIZE_RE = /^(XS|S|M|L|XL|XXL|2XL|3XL|XXXL|4XL|Free Size|One Size|FREE|OS|F\/S)$/i;
   var items = [], cur = '', depth = 0;
   for (var i = 0; i < s.length; i++) {
     var c = s[i];
@@ -3309,11 +3323,22 @@ function parseSummaryStr(s) {
   }
   if (cur.trim()) items.push(cur.trim());
   return items.map(function(part) {
-    var qty=1, sub='';
-    var qm = part.match(/\(\s*[xX×]\s*(\d+)\s*\)\s*$/);
-    if (qm) { qty=parseInt(qm[1])||1; part=part.slice(0,part.lastIndexOf(qm[0])).trim(); }
-    var sm = part.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
-    if (sm) { part=sm[1].trim(); sub=sm[2].trim(); }
+    part = part.trim();
+    var qty = 1, sub = '';
+    // 格式 A: 末尾 ( xN) 或 (XXL xN)
+    var fmtA = part.match(/\(\s*([^)]*?)\s*[xX×]\s*(\d+)\s*\)\s*$/);
+    if (fmtA) {
+      qty = parseInt(fmtA[2]) || 1;
+      var insideA = fmtA[1].trim();
+      if (SIZE_RE.test(insideA)) sub = insideA;
+      part = part.slice(0, part.lastIndexOf(fmtA[0])).trim();
+    }
+    // 格式 B: 末尾是尺碼括號 (XXL)
+    var fmtB = part.match(/\(([^)]+)\)\s*$/);
+    if (!sub && fmtB && SIZE_RE.test(fmtB[1].trim())) {
+      sub = fmtB[1].trim();
+      part = part.slice(0, part.lastIndexOf(fmtB[0])).trim();
+    }
     return { name:part, sub:sub, qty:qty };
   });
 }
