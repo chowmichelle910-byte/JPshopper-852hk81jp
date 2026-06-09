@@ -556,6 +556,38 @@
     .copy-btn:active { background:#e5e7eb; }
     .copy-btn.copied { background:#d1fae5; border-color:#6ee7b7; color:#065f46; }
 
+    /* ── 執貨清單 ── */
+    #page-picking { padding: 16px; }
+    .picking-toolbar { display:flex; gap:10px; align-items:center; margin-bottom:14px; flex-wrap:wrap; }
+    .picking-region-btn { padding:6px 18px; border:1.5px solid #ddd; border-radius:20px; background:#fff; font-size:13px; cursor:pointer; }
+    .picking-region-btn.active { background:#111; color:#fff; border-color:#111; }
+    .picking-print-btn { margin-left:auto; padding:6px 18px; background:#111; color:#fff; border:none; border-radius:20px; font-size:13px; cursor:pointer; }
+    .picking-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+    .picking-card { border:1px solid #ddd; border-radius:6px; padding:10px; background:#fff; page-break-inside:avoid; break-inside:avoid; }
+    .picking-card-header { font-size:11px; font-weight:700; color:#111; margin-bottom:6px; }
+    .picking-card-divider { border:none; border-top:1px dashed #ccc; margin:6px 0; }
+    .picking-item { display:flex; align-items:center; gap:6px; margin-bottom:5px; }
+    .picking-item img { width:36px; height:36px; object-fit:cover; border-radius:4px; border:1px solid #eee; flex-shrink:0; }
+    .picking-item-img-placeholder { width:36px; height:36px; background:#f0f0f0; border-radius:4px; flex-shrink:0; }
+    .picking-item-info { flex:1; min-width:0; }
+    .picking-item-name { font-size:11px; font-weight:600; color:#111; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .picking-item-sub { font-size:10px; color:#888; }
+    .picking-item-qty { font-size:12px; font-weight:700; color:#111; flex-shrink:0; white-space:nowrap; }
+
+    @media print {
+      body * { visibility:hidden !important; }
+      #page-picking, #page-picking * { visibility:visible !important; }
+      #page-picking { position:fixed; top:0; left:0; width:100%; padding:8mm; }
+      .picking-toolbar { display:none !important; }
+      .picking-grid { grid-template-columns:repeat(3,1fr); gap:6px; }
+      .picking-card { border:1px solid #999; padding:7px; font-size:10px; }
+      .picking-card-header { font-size:10px; }
+      .picking-item img, .picking-item-img-placeholder { width:30px; height:30px; }
+      .picking-item-name { font-size:9px; }
+      .picking-item-sub { font-size:8px; }
+      .picking-item-qty { font-size:10px; }
+    }
+
     .sf-section { padding:8px 12px 10px; background:#f8faff; border-top:1px dashed #c7d8f8; }
     .sf-cols { display:flex; flex-direction:row; align-items:flex-start; gap:8px; }
     .sf-col { display:flex; flex-direction:column; align-items:center; background:#fff; border-radius:8px; padding:6px; border:1px solid #e0ecff; gap:4px; }
@@ -603,6 +635,9 @@
       <div class="nav-item active" onclick="goto('orders'); closeSidebar();" id="nav-orders">
         <span class="nav-icon">📋</span> 所有訂單
         <span class="nav-badge" id="badgeTotal">—</span>
+      </div>
+      <div class="nav-item" onclick="goto('picking'); closeSidebar();" id="nav-picking">
+        <span class="nav-icon">📋</span> 執貨清單
       </div>
       <div class="nav-item" onclick="goto('refund'); closeSidebar();" id="nav-refund">
         <span class="nav-icon">💸</span> 退款區
@@ -866,6 +901,18 @@
       </div>
 
       <!-- ════ PAGE: 上架商品 ════ -->
+      <div class="page" id="page-picking">
+        <div class="picking-toolbar">
+          <button class="picking-region-btn active" id="pickRegionTW" onclick="setPickRegion('tw')">🇹🇼 台灣</button>
+          <button class="picking-region-btn" id="pickRegionHK" onclick="setPickRegion('hk')">🇭🇰 香港</button>
+          <span id="pickCount" style="font-size:12px;color:#888;margin-left:4px;"></span>
+          <button class="picking-print-btn" onclick="window.print()">🖨️ 列印</button>
+        </div>
+        <div class="picking-grid" id="pickingGrid">
+          <div style="color:#bbb;font-size:13px;grid-column:1/-1;padding:20px 0;">載入中...</div>
+        </div>
+      </div>
+
       <div class="page" id="page-products">
         <div class="card" style="max-width: 680px;">
           <div class="card-title"><span>🛍️</span> 遠端上架新商品</div>
@@ -1129,7 +1176,7 @@ async function loadSheetList() {
 }
 
 // ── Navigation ──
-const pageTitles = { orders:'所有訂單', refund:'退款區', stock:'庫存管理', purchase:'訂貨區', settle:'結算區', profit:'盈利計算', events:'建立活動', products:'上架商品' };
+const pageTitles = { orders:'所有訂單', picking:'執貨清單', refund:'退款區', stock:'庫存管理', purchase:'訂貨區', settle:'結算區', profit:'盈利計算', events:'建立活動', products:'上架商品' };
 function goto(page) {
   currentPage = page;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -1148,6 +1195,8 @@ function goto(page) {
   if (page === 'stock' && hasStock) floatEl.className = 'float-save visible';
   else if (page === 'purchase' && hasPurchase) floatEl.className = 'float-save visible';
   else floatEl.className = 'float-save';
+  // 執貨清單載入
+  if (page === 'picking') renderPickingList();
   // 結算區：重設儲存狀態
   if (page === 'settle') {
     const hasSettle = Object.keys(settleChanges).length > 0;
@@ -3191,6 +3240,75 @@ async function rfUploadPhoto(orderId, btn) {
     } catch(err) { alert('上傳失敗：' + err.message); btn.innerText = '📷 上傳退款截圖'; btn.disabled = false; }
   };
   input.click();
+}
+
+var pickRegion = 'tw';
+function setPickRegion(r) {
+  pickRegion = r;
+  document.getElementById('pickRegionTW').classList.toggle('active', r === 'tw');
+  document.getElementById('pickRegionHK').classList.toggle('active', r === 'hk');
+  renderPickingList();
+}
+
+function renderPickingList() {
+  var grid = document.getElementById('pickingGrid');
+  if (!grid) return;
+  if (!allOrders || allOrders.length === 0) {
+    grid.innerHTML = '<div style="color:#bbb;font-size:13px;grid-column:1/-1;padding:20px 0;">尚無訂單資料，請先載入訂單</div>';
+    return;
+  }
+  // 篩選已付款且對應地區
+  var paid = allOrders.filter(function(o) {
+    var isTW = o.pickupType && o.pickupType.indexOf('賣貨便') !== -1 || o.payMethod && o.payMethod.indexOf('郵局') !== -1;
+    var regionMatch = pickRegion === 'tw' ? isTW : !isTW;
+    return (o.status === '已付款' || o.status === '已收款') && regionMatch;
+  });
+  document.getElementById('pickCount').innerText = paid.length + ' 張訂單';
+  if (paid.length === 0) {
+    grid.innerHTML = '<div style="color:#bbb;font-size:13px;grid-column:1/-1;padding:20px 0;">沒有已付款訂單</div>';
+    return;
+  }
+  // 建立 photoMap（從 productPhotos）
+  grid.innerHTML = paid.map(function(o) {
+    var photoMap = {};
+    if (o.productPhotos) o.productPhotos.forEach(function(p){ if(p.photo) photoMap[p.name]=p.photo; });
+    var items = parseSummaryStr(o.summary || '');
+    var itemRows = items.map(function(it) {
+      var photo = photoMap[it.name] || '';
+      var imgHtml = photo
+        ? '<img src="' + photo + '" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid #eee;flex-shrink:0;display:block;">'
+        : '<div class="picking-item-img-placeholder"></div>';
+      var nameHtml = it.name + (it.sub ? '<div class="picking-item-sub">(' + it.sub + ')</div>' : '');
+      return '<div class="picking-item">' + imgHtml + '<div class="picking-item-info"><div class="picking-item-name">' + nameHtml + '</div></div><div class="picking-item-qty">×' + it.qty + '</div></div>';
+    }).join('');
+    return '<div class="picking-card">'
+      + '<div class="picking-card-header">' + o.id + '&nbsp;&nbsp;' + (o.name||'') + '</div>'
+      + '<hr class="picking-card-divider">'
+      + itemRows
+      + '</div>';
+  }).join('');
+}
+
+// 解析 summary 字串成 [{name,sub,qty}]
+function parseSummaryStr(s) {
+  if (!s) return [];
+  var items = [], cur = '', depth = 0;
+  for (var i = 0; i < s.length; i++) {
+    var c = s[i];
+    if (c==='(' || c==='（') { depth++; cur+=c; }
+    else if (c===')' || c==='）') { depth--; cur+=c; }
+    else if ((c===',' || c==='，') && depth===0) { if(cur.trim()) items.push(cur.trim()); cur=''; }
+    else cur+=c;
+  }
+  if (cur.trim()) items.push(cur.trim());
+  return items.map(function(part) {
+    var qty=1, sub='';
+    var qm = part.match(/\(\s*[xX×]\s*(\d+)\s*\)\s*$/);
+    if (qm) { qty=parseInt(qm[1])||1; part=part.slice(0,part.lastIndexOf(qm[0])).trim(); }
+    var sm = part.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+    if (sm) { part=sm[1].trim(); sub=sm[2].trim(); }
+    return { name:part, sub:sub, qty:qty };
+  });
 }
 
 function copyBankInfo(btn, text) {
