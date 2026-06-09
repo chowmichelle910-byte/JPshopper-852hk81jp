@@ -3352,58 +3352,79 @@ function printPickingList() {
   var cards = Array.from(grid.querySelectorAll('.picking-card'));
   if (!cards.length) return;
 
-  var COL_W=234, CARD_GAP=6, PAGE_H=940;
-  var mDiv=document.createElement('div');
-  mDiv.style.cssText='position:fixed;top:-9999px;left:0;width:'+COL_W+'px;visibility:hidden;';
-  document.body.appendChild(mDiv);
-  var cardH=cards.map(function(c){
-    var cl=c.cloneNode(true);mDiv.appendChild(cl);
-    var h=cl.offsetHeight;mDiv.removeChild(cl);return h;
-  });
-  document.body.removeChild(mDiv);
-
-  var pages=[],colH=[0,0,0],colC=[[],[],[]];
-  function sc(){return colH[0]<=colH[1]&&colH[0]<=colH[2]?0:colH[1]<=colH[2]?1:2;}
-  cards.forEach(function(card,i){
-    var h=cardH[i]+CARD_GAP,ci=sc();
-    if(colH[ci]>0&&colH[ci]+h>PAGE_H){
-      pages.push({c:[colC[0].slice(),colC[1].slice(),colC[2].slice()]});
-      colH=[0,0,0];colC=[[],[],[]];ci=0;
-    }
-    colC[ci].push(card);colH[ci]+=h;
-  });
-  pages.push({c:[colC[0].slice(),colC[1].slice(),colC[2].slice()]});
-
-  var css=[
-    '@page{size:A4 portrait;margin:10mm}',
-    'body{margin:0;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;font-size:11px}',
-    '.pg{display:flex;gap:6px;align-items:flex-start;break-after:page;page-break-after:always}',
-    '.pg.last{break-after:auto;page-break-after:auto}',
-    '.col{flex:1;display:flex;flex-direction:column;gap:5px}',
-    '.picking-card{border:1px solid #ccc;border-radius:4px;padding:7px;break-inside:avoid;page-break-inside:avoid}',
-    '.picking-card-header{font-size:10px;font-weight:700;color:#111;margin-bottom:4px}',
+  // 列印 CSS（與新視窗一致）
+  var PRINT_CSS = [
+    '@page{size:A4 portrait;margin:5mm}',
+    'body{margin:0;padding:0;font-family:Helvetica Neue,Helvetica,Arial,sans-serif;font-size:11px}',
+    '.pick-wrap{display:flex;gap:5px;align-items:flex-start}',
+    '.pick-col{flex:1;display:flex;flex-direction:column;gap:4px}',
+    '.picking-card{border:1px solid #ccc;border-radius:4px;padding:6px;break-inside:avoid;page-break-inside:avoid;box-sizing:border-box}',
+    '.picking-card-header{font-size:10px;font-weight:700;color:#111;margin-bottom:3px}',
     '.picking-card-divider{border:none;border-top:1px dashed #ccc;margin:3px 0}',
-    '.picking-item{display:flex;align-items:center;gap:5px;margin-bottom:3px}',
-    '.picking-item img{width:30px;height:30px;object-fit:cover;border-radius:3px;border:1px solid #eee;flex-shrink:0;display:block}',
-    '.picking-item-img-placeholder{width:30px;height:30px;background:#f0f0f0;border-radius:3px;flex-shrink:0}',
+    '.picking-item{display:flex;align-items:center;gap:4px;margin-bottom:3px}',
+    '.picking-item img{width:28px;height:28px;object-fit:cover;border-radius:3px;border:1px solid #eee;flex-shrink:0;display:block}',
+    '.picking-item-img-placeholder{width:28px;height:28px;background:#f0f0f0;border-radius:3px;flex-shrink:0}',
     '.picking-item-info{flex:1;min-width:0}',
     '.picking-item-name{font-size:10px;font-weight:600;color:#111;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
     '.picking-item-sub{font-size:9px;color:#888}',
-    '.picking-item-qty{font-size:11px;font-weight:700;color:#111;flex-shrink:0}'
+    '.picking-item-qty{font-size:11px;font-weight:700;flex-shrink:0}'
   ].join('\n');
 
-  var body=pages.map(function(pg,pi){
-    var isLast=pi===pages.length-1;
-    var cols=[0,1,2].map(function(ci){
-      return '<div class=\"col\">'+pg.c[ci].map(function(card){return card.outerHTML;}).join('')+'</div>';
+  // 先在隱藏視窗量度正確高度（用列印 CSS）
+  // A4 @page margin:5mm → 可用高 = 287mm = 287×96/25.4 ≈ 1085px
+  // 可用寬 = 200mm = 200×96/25.4 ≈ 756px，3欄 = (756-10)/3 ≈ 249px
+  var PAGE_H = 1060; // 保守值（1085 - 25 留餘量）
+  var COL_W  = 246;
+  var CARD_GAP = 4;
+
+  // 用隱藏 iframe 量度卡片高度（用列印 CSS）
+  var mfr = document.createElement('iframe');
+  mfr.style.cssText = 'position:fixed;top:-9999px;left:0;width:'+COL_W+'px;height:2000px;border:none;visibility:hidden;';
+  document.body.appendChild(mfr);
+  var mDoc = mfr.contentDocument || mfr.contentWindow.document;
+  mDoc.open();
+  mDoc.write('<!DOCTYPE html><html><head><style>'+PRINT_CSS+'</style></head><body></body></html>');
+  mDoc.close();
+
+  var cardH = cards.map(function(c){
+    var cl = c.cloneNode(true);
+    cl.style.width = COL_W+'px';
+    cl.style.marginBottom = '0';
+    mDoc.body.appendChild(cl);
+    var h = cl.offsetHeight;
+    mDoc.body.removeChild(cl);
+    return h;
+  });
+  document.body.removeChild(mfr);
+
+  // 分配卡片到頁面×欄（最短欄優先）
+  var pages=[], colH=[0,0,0], colC=[[],[],[]];
+  function sc(){return colH[0]<=colH[1]&&colH[0]<=colH[2]?0:colH[1]<=colH[2]?1:2;}
+  cards.forEach(function(card,i){
+    var h = cardH[i]+CARD_GAP, ci = sc();
+    if(colH[ci]>0 && colH[ci]+h>PAGE_H){
+      pages.push({c:[colC[0].slice(),colC[1].slice(),colC[2].slice()]});
+      colH=[0,0,0]; colC=[[],[],[]]; ci=0;
+    }
+    colC[ci].push(card); colH[ci]+=h;
+  });
+  pages.push({c:[colC[0].slice(),colC[1].slice(),colC[2].slice()]});
+
+  // 建立列印 HTML
+  var body = pages.map(function(pg,pi){
+    var isLast = pi===pages.length-1;
+    var cols = [0,1,2].map(function(ci){
+      var cardsHtml = pg.c[ci].map(function(card){return card.outerHTML;}).join('');
+      return '<div class=\"pick-col\">'+cardsHtml+'</div>';
     }).join('');
-    return '<div class=\"pg'+(isLast?' last':'')+'\">' +cols+'</div>';
+    var style = isLast ? '' : ' style=\"break-after:page;page-break-after:always\"';
+    return '<div class=\"pick-wrap\"'+style+'>'+cols+'</div>';
   }).join('');
 
-  var html='<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><style>'+css+'</style></head>'
+  var html = '<!DOCTYPE html><html><head><meta charset=\"UTF-8\"><style>'+PRINT_CSS+'</style></head>'
     +'<body>'+body+'<scr'+'ipt>window.onload=function(){window.print();setTimeout(function(){window.close();},800);};<\/scr'+'ipt></body></html>';
 
-  var pw=window.open('','_blank');
+  var pw = window.open('','_blank');
   if(!pw){alert('請允許彈出視窗後重試');return;}
   pw.document.write(html);
   pw.document.close();
