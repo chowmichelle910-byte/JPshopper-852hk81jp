@@ -563,6 +563,7 @@
     .picking-region-btn.active { background:#111; color:#fff; border-color:#111; }
     .picking-print-btn { margin-left:auto; padding:6px 18px; background:#111; color:#fff; border:none; border-radius:20px; font-size:13px; cursor:pointer; }
     .picking-grid { columns:3; column-gap:10px; }
+    .picking-col { display:flex; flex-direction:column; gap:8px; flex:1; }
     .picking-card { border:1px solid #ddd; border-radius:6px; padding:10px; background:#fff; break-inside:avoid; page-break-inside:avoid; -webkit-column-break-inside:avoid; display:inline-block; width:100%; box-sizing:border-box; margin-bottom:10px; }
     .picking-card-header { font-size:11px; font-weight:700; color:#111; margin-bottom:6px; }
     .picking-card-divider { border:none; border-top:1px dashed #ccc; margin:6px 0; }
@@ -579,8 +580,9 @@
       #page-picking, #page-picking * { visibility:visible !important; }
       #page-picking { position:fixed; top:0; left:0; width:100%; padding:8mm; }
       .picking-toolbar { display:none !important; }
-      .picking-grid { columns:3; column-gap:6px; }
-      .picking-card { border:1px solid #999; padding:7px; font-size:10px; break-inside:avoid; page-break-inside:avoid; -webkit-column-break-inside:avoid; display:inline-block; width:100%; box-sizing:border-box; margin-bottom:6px; }
+      .picking-grid { display:flex !important; flex-direction:row; gap:6px; align-items:flex-start; }
+      .picking-col { flex:1; display:flex; flex-direction:column; gap:6px; }
+      .picking-card { border:0.5px solid #999; padding:7px; font-size:10px; break-inside:avoid; page-break-inside:avoid; display:block !important; width:100% !important; margin-bottom:0 !important; }
       .picking-card-header { font-size:10px; }
       .picking-item img, .picking-item-img-placeholder { width:30px; height:30px; }
       .picking-item-name { font-size:9px; }
@@ -906,7 +908,7 @@
           <button class="picking-region-btn active" id="pickRegionTW" onclick="setPickRegion('tw')">🇹🇼 台灣</button>
           <button class="picking-region-btn" id="pickRegionHK" onclick="setPickRegion('hk')">🇭🇰 香港</button>
           <span id="pickCount" style="font-size:12px;color:#888;margin-left:4px;"></span>
-          <button class="picking-print-btn" onclick="window.print()">🖨️ 列印 / 存 PDF</button>
+          <button class="picking-print-btn" onclick="printPickingList()">🖨️ 列印 / 存 PDF</button>
         </div>
         <div style="font-size:11px;color:#aaa;margin-bottom:10px;">💡 列印時在對話框選擇「另存為 PDF」即可儲存。每張訂單卡片不會跨頁分割。</div>
         <div class="picking-grid" id="pickingGrid">
@@ -3342,6 +3344,47 @@ function parseSummaryStr(s) {
     }
     return { name:part, sub:sub, qty:qty };
   });
+}
+
+function printPickingList() {
+  var grid = document.getElementById('pickingGrid');
+  if (!grid) return;
+  // 把所有 card 取出，按高度分配到3欄（最短欄優先）
+  var cards = Array.from(grid.querySelectorAll('.picking-card'));
+  if (!cards.length) { window.print(); return; }
+
+  // 建立 3 欄 div
+  var cols = [0,1,2].map(function() {
+    var d = document.createElement('div');
+    d.className = 'picking-col';
+    return d;
+  });
+  var heights = [0, 0, 0];
+  cards.forEach(function(card) {
+    var minIdx = 0;
+    if (heights[1] < heights[minIdx]) minIdx = 1;
+    if (heights[2] < heights[minIdx]) minIdx = 2;
+    cols[minIdx].appendChild(card);
+    heights[minIdx] += card.offsetHeight + 8;
+  });
+
+  // 暫時改為 3 欄 flex
+  var originalHTML = grid.innerHTML;
+  grid.innerHTML = '';
+  grid.style.display = 'flex';
+  grid.style.gap = '8px';
+  grid.style.alignItems = 'flex-start';
+  cols.forEach(function(c) { grid.appendChild(c); });
+
+  window.print();
+
+  // 還原
+  setTimeout(function() {
+    grid.style.display = '';
+    grid.style.gap = '';
+    grid.style.alignItems = '';
+    renderPickingList();
+  }, 500);
 }
 
 function copyBankInfo(btn, text) {
