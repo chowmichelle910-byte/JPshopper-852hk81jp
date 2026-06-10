@@ -1248,7 +1248,6 @@ function renderEventTabs(containerId, mode) {
 
   const active = allSheets.filter(n => !n.startsWith('[END]'));
   const ended  = allSheets.filter(n =>  n.startsWith('[END]'));
-  if (ended.length) wrap.classList.add('has-ended');
 
   function makeBtn(name) {
     const btn = document.createElement('button');
@@ -1269,17 +1268,29 @@ function renderEventTabs(containerId, mode) {
   // 現有活動
   active.forEach(name => wrap.appendChild(makeBtn(name)));
 
-  // 過往活動（[END] 前綴）
+  // 過往活動：折疊式，預設隱藏
   if (ended.length) {
-    const lbl = document.createElement('span');
-    lbl.className = 'event-section-label';
-    lbl.innerHTML = '📦 過往活動';
-    wrap.appendChild(lbl);
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className = 'event-section-label';
+    toggleBtn.style.cssText = 'cursor:pointer;border:none;user-select:none;';
+    toggleBtn.innerHTML = '📦 過往活動 ▶';
+
+    const endedWrap = document.createElement('div');
+    endedWrap.style.cssText = 'display:none;flex-wrap:wrap;gap:6px;margin-top:4px;';
     ended.forEach(name => {
       const btn = makeBtn(name);
       btn.style.cssText = 'background:#e3f2fd;border-color:#90caf9;color:#1565c0;';
-      wrap.appendChild(btn);
+      endedWrap.appendChild(btn);
     });
+
+    toggleBtn.onclick = () => {
+      const open = endedWrap.style.display !== 'none';
+      endedWrap.style.display = open ? 'none' : 'flex';
+      toggleBtn.innerHTML = open ? '📦 過往活動 ▶' : '📦 過往活動 ▼';
+    };
+
+    wrap.appendChild(toggleBtn);
+    wrap.appendChild(endedWrap);
   }
 }
 
