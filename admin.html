@@ -158,6 +158,8 @@
     }
     .event-tab-btn:hover { border-color: var(--ink); color: var(--ink); }
     .event-tab-btn.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+    .event-section-label { font-size:10px; font-weight:700; letter-spacing:1px; color:#fff; background:#2980b9; padding:2px 8px; border-radius:10px; margin-top:4px; margin-right:2px; display:inline-flex; align-items:center; }
+    .event-tabs.has-ended { gap:6px; }
     .stock-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
     .stock-item {
       background: var(--card); border: 1.5px solid var(--border); border-radius: 10px;
@@ -1243,21 +1245,42 @@ function renderEventTabs(containerId, mode) {
   const wrap = document.getElementById(containerId);
   wrap.innerHTML = '';
   if (allSheets.length === 0) { wrap.innerHTML = '<div style="color:#bbb;font-size:13px;">沒有活動分頁</div>'; return; }
-  allSheets.forEach(name => {
+
+  const active = allSheets.filter(n => !n.startsWith('[END]'));
+  const ended  = allSheets.filter(n =>  n.startsWith('[END]'));
+  if (ended.length) wrap.classList.add('has-ended');
+
+  function makeBtn(name) {
     const btn = document.createElement('button');
     btn.className = 'event-tab-btn';
     btn.innerText = name;
     btn.onclick = () => {
       wrap.querySelectorAll('.event-tab-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      if (mode === 'stock') loadProducts(name);
-      if (mode === 'product') document.getElementById('prodTargetSheet').value = name;
+      if (mode === 'stock')    loadProducts(name);
+      if (mode === 'product')  document.getElementById('prodTargetSheet').value = name;
       if (mode === 'purchase') loadOrderSummary(name);
-      if (mode === 'settle') loadSettleData(name);
-      if (mode === 'profit') loadProfitData(name);
+      if (mode === 'settle')   loadSettleData(name);
+      if (mode === 'profit')   loadProfitData(name);
     };
-    wrap.appendChild(btn);
-  });
+    return btn;
+  }
+
+  // 現有活動
+  active.forEach(name => wrap.appendChild(makeBtn(name)));
+
+  // 過往活動（[END] 前綴）
+  if (ended.length) {
+    const lbl = document.createElement('span');
+    lbl.className = 'event-section-label';
+    lbl.innerHTML = '📦 過往活動';
+    wrap.appendChild(lbl);
+    ended.forEach(name => {
+      const btn = makeBtn(name);
+      btn.style.cssText = 'background:#e3f2fd;border-color:#90caf9;color:#1565c0;';
+      wrap.appendChild(btn);
+    });
+  }
 }
 
 // ── Orders ──
@@ -2407,6 +2430,65 @@ function createNewEvent() {
 }
 
 // ── Products ──
+// ── 上架商品：自動計算成本/台幣 ──
+function calcProdCost() {
+  var yen  = parseFloat(document.getElementById('prodYen').value)    || 0;
+  var wt   = parseFloat(document.getElementById('prodWeight').value) || 0;
+  var cost = Math.round((yen * 0.05 + wt / 50 * 4.5) * 100) / 100;
+  document.getElementById('prodCost').value = cost > 0 ? cost : '';
+  var priceEl = document.getElementById('prodPrice');
+  if (!priceEl._manualEdit && cost > 0) priceEl.value = Math.round(cost + 30);
+  calcProdTwd();
+}
+function calcProdTwd() {
+  var yen  = parseFloat(document.getElementById('prodYen').value)      || 0;
+  var rate = parseFloat(document.getElementById('prodTwdRate').value)  || 0;
+  if (!yen || !rate) return;
+  var twd = Math.ceil(yen * rate / 5) * 5;
+  var twdEl = document.getElementById('prodTwd');
+  if (!twdEl._manualEdit) twdEl.value = twd;
+}
+// ── 商品圖片上傳（同步觸發，不能是 async）──
+function prodUploadPhoto() {
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+  document.body.appendChild(input);
+  input.onchange = async function(e) {
+    document.body.removeChild(input);
+    var file = e.target.files[0];
+    if (!file) return;
+    var btn = document.getElementById('prodPhotoBtn');
+    btn.innerText = '⏳ 上傳中...'; btn.disabled = true;
+    try {
+      var timestamp = Math.round(Date.now() / 1000);
+      var sigStr = 'timestamp=' + timestamp + CLOUDINARY_SECRET;
+      var signature = await sha1(sigStr);
+      var fd = new FormData();
+      fd.append('file', file); fd.append('api_key', CLOUDINARY_KEY);
+      fd.append('timestamp', timestamp); fd.append('signature', signature);
+      var res  = await fetch('https://api.cloudinary.com/v1_1/' + CLOUDINARY_CLOUD + '/image/upload', { method:'POST', body:fd });
+      var data = await res.json();
+      if (data.secure_url) {
+        var url = data.secure_url.replace(/\.[^.]+$/, '.jpg');
+        document.getElementById('prodPhoto').value = url;
+        document.getElementById('prodPhotoPreview').innerHTML = '<img src="' + url + '" style="width:100%;height:100%;object-fit:cover;">';
+        btn.innerText = '✅ 已上傳';
+      } else { btn.innerText = '❌ 失敗'; }
+    } catch(err) { btn.innerText = '❌ 錯誤'; console.error(err); }
+    btn.disabled = false;
+  };
+  input.click();
+}
+// 記住手動修改旗標
+document.addEventListener('DOMContentLoaded', function() {
+  ['prodPrice','prodTwd'].forEach(function(id) {
+    var el = document.getElementById(id);
+    if (el) el.addEventListener('input', function(){ el._manualEdit = true; });
+  });
+});
+
 function addNewProduct() {
   const targetSheet = document.getElementById('prodTargetSheet').value.trim();
   const p_name = document.getElementById('prodName').value.trim();
