@@ -929,6 +929,7 @@
           </div>
 
           <div class="form-grid" style="margin-top:14px;">
+            <!-- 商品名稱 / 款式 -->
             <div class="form-field">
               <label class="form-label">商品名稱 *</label>
               <input type="text" id="prodName" placeholder="商品名稱">
@@ -937,28 +938,57 @@
               <label class="form-label">款式 / 規格</label>
               <input type="text" id="prodSub" placeholder="例如：白色 / 黑色">
             </div>
+
+            <!-- 日幣原價（C欄）/ 重量（G欄） -->
             <div class="form-field">
-              <label class="form-label">日幣原價</label>
-              <input type="number" id="prodYen" placeholder="¥">
+              <label class="form-label">日幣原價 ¥（C欄）</label>
+              <input type="number" id="prodYen" placeholder="¥" oninput="calcProdCost()">
             </div>
             <div class="form-field">
-              <label class="form-label">成本 HKD</label>
-              <input type="number" id="prodCost" placeholder="HK$">
+              <label class="form-label">重量 g（G欄）</label>
+              <input type="number" id="prodWeight" placeholder="g" oninput="calcProdCost()">
             </div>
+
+            <!-- 成本（D欄，自動計算，唯讀） -->
             <div class="form-field">
-              <label class="form-label">港幣售價 *</label>
+              <label class="form-label">成本 HK$（D欄）<span style="font-size:10px;color:#aaa;"> = 日幣×0.05 + 重量/50×4.5</span></label>
+              <input type="number" id="prodCost" placeholder="自動計算" readonly style="background:#f5f5f5;color:#888;cursor:not-allowed;">
+            </div>
+
+            <!-- 港幣售價（E欄，= D+30，可改） -->
+            <div class="form-field">
+              <label class="form-label">港幣售價 HK$（E欄）<span style="font-size:10px;color:#aaa;"> 預設 = 成本+30</span></label>
               <input type="number" id="prodPrice" placeholder="HK$">
             </div>
+
+            <!-- 台幣匯率 / 台幣售價（I欄，可改） -->
             <div class="form-field">
-              <label class="form-label">台幣售價</label>
+              <label class="form-label">台幣匯率（日幣→台幣）</label>
+              <input type="number" id="prodTwdRate" placeholder="例如：0.22" step="0.001" oninput="calcProdTwd()">
+            </div>
+            <div class="form-field">
+              <label class="form-label">台幣售價 NT$（I欄）<span style="font-size:10px;color:#aaa;"> 日幣×匯率，無條件進位至5的倍數</span></label>
               <input type="number" id="prodTwd" placeholder="NT$">
             </div>
+
+            <!-- 最大購買量（J欄） -->
+            <div class="form-field">
+              <label class="form-label">最大購買量（J欄）<span style="font-size:10px;color:#aaa;"> 空白 = 不限制</span></label>
+              <input type="number" id="prodStockLimit" placeholder="不限制">
+            </div>
+
+            <!-- 圖片 -->
             <div class="form-field full">
-              <label class="form-label">Cloudinary 圖片網址 *</label>
-              <input type="text" id="prodPhoto" placeholder="https://res.cloudinary.com/...">
+              <label class="form-label">商品圖片 *</label>
+              <div style="display:flex;gap:10px;align-items:center;">
+                <button type="button" class="btn" id="prodPhotoBtn" onclick="prodUploadPhoto()" style="padding:8px 16px;white-space:nowrap;">📷 從相簿選擇</button>
+                <div id="prodPhotoPreview" style="width:56px;height:56px;background:#f0f0f0;border-radius:8px;border:1px solid #ddd;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:11px;color:#bbb;">預覽</div>
+                <input type="hidden" id="prodPhoto">
+              </div>
             </div>
           </div>
-          <button class="btn btn-blue" style="width:100%; padding:10px;" onclick="addNewProduct()">🚀 發布上架新商品</button>
+
+          <button class="btn btn-blue" style="width:100%; padding:10px; margin-top:8px;" onclick="addNewProduct()">🚀 發布上架新商品</button>
         </div>
       </div>
 
@@ -2393,11 +2423,18 @@ function addNewProduct() {
       p_yen: document.getElementById('prodYen').value || 0,
       p_cost: document.getElementById('prodCost').value || 0,
       p_price, p_twd: document.getElementById('prodTwd').value || 0,
+      p_weight: document.getElementById('prodWeight').value || 0,
+      p_stockLimit: document.getElementById('prodStockLimit').value || '',
       p_photo, p_weight: 0, p_quote: ''
     })
   }).then(() => {
     alert(`🎉 商品【${p_name}】已上架到【${targetSheet}】！`);
-    ['prodName','prodSub','prodYen','prodCost','prodPrice','prodTwd','prodPhoto'].forEach(id => document.getElementById(id).value = '');
+    ['prodName','prodSub','prodYen','prodCost','prodPrice','prodTwd','prodWeight','prodStockLimit','prodPhoto'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.value = ''; el._manualEdit = false; }
+    });
+    document.getElementById('prodPhotoPreview').innerHTML = '預覽';
+    document.getElementById('prodPhotoBtn').innerText = '📷 從相簿選擇';
   }).catch(err => alert('錯誤：' + err));
 }
 
@@ -3373,7 +3410,7 @@ function printPickingList() {
   // 先在隱藏視窗量度正確高度（用列印 CSS）
   // A4 @page margin:5mm → 可用高 = 287mm = 287×96/25.4 ≈ 1085px
   // 可用寬 = 200mm = 200×96/25.4 ≈ 756px，3欄 = (756-10)/3 ≈ 249px
-  var PAGE_H = 1200; // 保守值（1085 - 25 留餘量）
+  var PAGE_H = 1060; // 保守值（1085 - 25 留餘量）
   var COL_W  = 246;
   var CARD_GAP = 4;
 
