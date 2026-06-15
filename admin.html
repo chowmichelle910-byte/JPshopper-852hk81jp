@@ -719,7 +719,7 @@
             </div>
           </div>
           <div style="padding:10px 16px 0; display:flex; gap:8px; align-items:center;">
-            <input id="searchHK" type="text" placeholder="🔍 搜尋姓名 / 電郵 / 手機末3碼..."
+            <input id="searchHK" type="text" placeholder="🔍 搜尋姓名 / 電郵 / 手機 / 訂單號..."
               style="flex:1; padding:7px 11px; border:1px solid var(--border); border-radius:7px; font-size:13px; outline:none;"
               oninput="applySearch('hk')">
             <button onclick="document.getElementById('searchHK').value=''; applySearch('hk');"
@@ -752,7 +752,7 @@
               onclick="sendAllArrivalNotifications()">🎉 全部發送到貨通知</button>
           </div>
           <div style="padding:10px 16px 0; display:flex; gap:8px; align-items:center;">
-            <input id="searchTW" type="text" placeholder="🔍 搜尋姓名 / 電郵 / 手機末3碼..."
+            <input id="searchTW" type="text" placeholder="🔍 搜尋姓名 / 電郵 / 手機 / 訂單號..."
               style="flex:1; padding:7px 11px; border:1px solid var(--border); border-radius:7px; font-size:13px; outline:none;"
               oninput="applySearch('tw')">
             <button onclick="document.getElementById('searchTW').value=''; applySearch('tw');"
@@ -2559,6 +2559,11 @@ function setFilter(region, filter, btn) {
   applyFilter(region);
 }
 
+// applySearch: 即時搜尋（oninput 觸發），等同呼叫 applyFilter
+function applySearch(region) {
+  applyFilter(region);
+}
+
 function applyFilter(region) {
   const isHK = region === 'hk';
   const allOrders = isHK ? allHKOrders : allTWOrders;
@@ -2596,11 +2601,14 @@ function applyFilter(region) {
   const q = (document.getElementById('search' + region.toUpperCase())?.value || '').toLowerCase().trim();
   if (q) {
     filtered = filtered.filter(order => {
-      const name  = (order.name  || '').toLowerCase();
-      const email = (order.email || '').toLowerCase();
-      const phone = (order.phone || '').toString();
-      const last3 = phone.length >= 3 ? phone.slice(-3) : phone;
-      return name.includes(q) || email.includes(q) || last3.includes(q) || phone.includes(q);
+      const name    = (order.name  || '').toLowerCase();
+      const email   = (order.email || '').toLowerCase();
+      const phone   = (order.phone || '').toString();
+      const last3   = phone.length >= 3 ? phone.slice(-3) : phone;
+      const orderId = (order.id   || '').toLowerCase();  // 訂單編號
+      const summary = (order.summary || '').toLowerCase(); // 商品名
+      return name.includes(q) || email.includes(q) || last3.includes(q)
+          || phone.includes(q) || orderId.includes(q) || summary.includes(q);
     });
   }
 
