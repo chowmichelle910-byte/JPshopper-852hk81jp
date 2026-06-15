@@ -1405,7 +1405,7 @@ function renderOrders(orders, bodyId, region, cls) {
       const store   = order.storeName     || '';
       const shopUrl = order.shipmentRef   || '';
       const wt      = order.weight        || 0;
-      const fee     = order.intlFee       || 0;
+      const fee     = order.shippingFee   || 0;  // F欄國際運費
       const photo   = order.arrivalPhoto  || '';
 
       if (cls === 'tw' && (shopUrl || wt || fee || photo || cm || recip)) {
