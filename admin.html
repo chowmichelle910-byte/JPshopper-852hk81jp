@@ -312,6 +312,8 @@
     .stockout-inquiry-btn:hover { background: #fff7ed; }
     .arrival-notify-btn { padding: 5px 10px; background: none; border: 1px solid #a7f3d0; border-radius: 6px; font-size: 11px; font-weight: 600; color: #059669; cursor: pointer; transition: all 0.15s; }
     .arrival-notify-btn:hover { background: #f0fdf4; }
+    .shipped-btn { padding: 5px 10px; background: none; border: 1px solid #93c5fd; border-radius: 6px; font-size: 11px; font-weight: 600; color: #1d4ed8; cursor: pointer; transition: all 0.15s; }
+    .shipped-btn:hover { background: #eff6ff; }
     /* 缺貨詢問彈窗 */
     .stockout-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:600; align-items:center; justify-content:center; padding:16px; }
     .stockout-modal.open { display:flex; }
@@ -1417,7 +1419,7 @@ function renderOrders(orders, bodyId, region, cls) {
         }
         if (photo) orderedHtml += `<div><a href="${photo}" target="_blank" style="color:#059669;">📷 到貨圖片</a></div>`;
         if (cm) orderedHtml += `<div><span style="color:#6b7280;">賣貨便訂單</span> <strong style="font-family:monospace;">${cm}</strong></div>`;
-        if (recip || store) orderedHtml += `<div style="margin-top:4px;font-size:14px;font-weight:700;color:#065f46;">${recip ? '👤 '+recip : ''} &nbsp; ${store ? '🏪 '+store+'門市' : ''}</div>`;
+        if (recip || store) orderedHtml += `<div style="margin-top:4px;font-size:14px;font-weight:700;color:#065f46;">${recip ? '👤 '+recip : ''} &nbsp; ${store ? '🏪 '+store : ''}</div>`;
         orderedHtml += '</div>';
         itemsHtml += orderedHtml;
       }
@@ -1485,6 +1487,7 @@ function renderOrders(orders, bodyId, region, cls) {
           ${!isPaid ? `<button class="reminder-btn" data-oid="${order.id}" onclick="sendManualReminder(this.dataset.oid, this)">⚠️ 催款</button>` : ''}
           ${isPaid ? `<button class="stockout-inquiry-btn" onclick="openStockoutModal('${order.id}')">📦 缺貨通知</button>` : ''}
           ${(order.status === '已到貨' || order.status === '已通知') ? `<button class="arrival-notify-btn" data-oid="${order.id}" onclick="sendArrivalNotification(this.dataset.oid, this)">🎉 到貨通知</button>` : ''}
+          ${order.status === '已下單' ? `<button class="shipped-btn" data-oid="${order.id}" onclick="markAsShipped(this.dataset.oid, this)">📬 已出貨</button>` : ''}
           <button class="cancel-order-btn" data-oid="${order.id}" data-sum="${encodeURIComponent(order.summary || '')}" onclick="openCancelModal(this.dataset.oid, decodeURIComponent(this.dataset.sum))">取消訂單</button>
           <button id="btn-${order.id}" class="ocard-status-btn ${isPaid ? 'paid' : 'unpaid'}"
             ${isPaid ? 'disabled' : `onclick="confirmPayment('${order.id}')"`}>
@@ -2578,6 +2581,7 @@ function applyFilter(region) {
     if (filter === 'shipped')  return s === '已到貨';
     if (filter === 'notified') return s === '已通知';
     if (filter === 'ordered')  return s === '已下單';
+    if (filter === 'dispatched') return s === '已出貨';
     if (filter === 'cancelled')return s === '已取消';
     return true;
   });
@@ -3182,6 +3186,21 @@ async function sendAllArrivalNotifications() {
   }
   alert(`✅ 已發送 ${success} / ${arrivedOrders.length} 筆到貨通知`);
   fetchOrders(); // 重新載入訂單
+}
+
+function markAsShipped(orderId, btn) {
+  if (!confirm('確認將訂單 ' + orderId + ' 標記為「已出貨」？\n標記後將從「已下單」列表移除。')) return;
+  btn.innerText = '⏳'; btn.disabled = true;
+  fetch(GAS, {
+    method: 'POST', mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'updateOrder', orderId, fields: { status: '已出貨' } })
+  }).then(() => {
+    // 即時移除卡片
+    const card = document.querySelector(`[data-orderid="${orderId}"]`);
+    if (card) card.style.display = 'none';
+    fetchOrders();
+  }).catch(() => { btn.innerText = '❌'; btn.disabled = false; });
 }
 
 function sendArrivalNotification(orderId, btn) {
