@@ -771,6 +771,10 @@
             <button class="printed-btn" onclick="bulkMark('tw','已印單')">🖨️ 批量已印單</button>
             <button class="dispatched-btn" onclick="bulkMark('tw','已出貨')">📬 批量已出貨</button>
           </div>
+          <div id="resend-bar-tw" style="display:none;padding:6px 16px 0;justify-content:flex-end;">
+            <button class="topbar-btn" style="background:#f59e0b;color:#fff;border-color:#f59e0b;font-size:12px;"
+              onclick="resendAllArrivalNotifications()">🔔 全部重發到貨通知</button>
+          </div>
           <div style="padding:10px 16px 0; display:flex; gap:8px; align-items:center;">
             <input id="searchTW" type="text" placeholder="🔍 搜尋姓名 / 電郵 / 手機 / 訂單號..."
               style="flex:1; padding:7px 11px; border:1px solid var(--border); border-radius:7px; font-size:13px; outline:none;"
@@ -2577,6 +2581,8 @@ function setFilter(region, filter, btn) {
   // 全部發送按鈕只在 TW 已到貨時顯示
   const bulkDiv = document.getElementById('tw-bulk-action');
   if (bulkDiv) bulkDiv.style.display = (region === 'tw' && filter === 'shipped') ? 'flex' : 'none';
+  const resendBar = document.getElementById('resend-bar-tw');
+  if (resendBar) resendBar.style.display = (region === 'tw' && filter === 'notified') ? 'flex' : 'none';
 
   applyFilter(region);
 }
@@ -3189,6 +3195,39 @@ async function saveSfChanges() {
   setTimeout(() => { if (btn) { btn.innerText = orig; btn.disabled = false; } updateFloatSave(); }, 2000);
 }
 
+function resendRefundReminder(orderId, btn) {
+  if (!confirm('確認再次發送退款提醒信給客人？')) return;
+  btn.innerText = '⏳'; btn.disabled = true;
+  fetch(GAS, {
+    method: 'POST', mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'sendStockoutInquiry', orderId,
+      outOfStockItems: [], inStockItems: [], isResend: true })
+  }).then(() => {
+    btn.innerText = '✅ 已發送';
+    setTimeout(() => { btn.innerText = '🔔 再次提醒退款資料'; btn.disabled = false; }, 3000);
+  }).catch(() => { btn.innerText = '❌'; btn.disabled = false; });
+}
+
+async function resendAllArrivalNotifications() {
+  const notified = allTWOrders.filter(o => o.status === '已通知');
+  if (!notified.length) { alert('沒有「已通知」訂單'); return; }
+  if (!confirm(`確定要對 ${notified.length} 筆「已通知」訂單重發到貨通知嗎？`)) return;
+  let success = 0;
+  for (const order of notified) {
+    try {
+      await fetch(GAS, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'sendArrivalNotification', orderId: order.id, isResend: true })
+      });
+      success++;
+    } catch(e) {}
+    await new Promise(r => setTimeout(r, 300));
+  }
+  alert(`✅ 已重發 ${success} / ${notified.length} 筆到貨通知`);
+}
+
 async function sendAllArrivalNotifications() {
   const arrivedOrders = [...allTWOrders].filter(o => o.status === '已到貨');
   if (!arrivedOrders.length) { alert('沒有「已到貨」訂單'); return; }
@@ -3434,6 +3473,8 @@ function renderRefundCards() {
             ${proofUrl ? '✓ 截圖已上傳' : '📷 上傳退款截圖'}
           </button>
           ${proofThumb}
+          <button style="padding:7px 12px;background:none;border:1.5px solid #f59e0b;border-radius:7px;font-size:12px;color:#b45309;font-weight:600;cursor:pointer;"
+            onclick="resendRefundReminder('${order.id}', this)">🔔 再次提醒退款資料</button>
           <button class="refund-sent-btn" ${btnDisabled} onclick="sendRefundConfirm('${order.id}', this)">已退款 →</button>
         </div>`}
       </div>`;
