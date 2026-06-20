@@ -703,11 +703,13 @@
         <div style="padding:24px; max-width:700px;">
           <div style="font-size:20px; font-weight:700; color:#111; margin-bottom:4px;">💸 退款區</div>
           <div style="font-size:13px; color:#888; margin-bottom:16px;">已發送缺貨通知、尚未完成退款的訂單</div>
-          <div style="display:flex; gap:8px; margin-bottom:16px; align-items:center; flex-wrap:wrap;">
+          <div style="display:flex; gap:8px; margin-bottom:12px; align-items:center;">
             <div class="refund-tab active" id="refundTabPending" onclick="setRefundTab('pending',this)">待退款</div>
             <div class="refund-tab" id="refundTabDone" onclick="setRefundTab('done',this)">已退款</div>
+          </div>
+          <div style="margin-bottom:14px;">
             <button id="bulkResendRefundBtn"
-              style="margin-left:auto;padding:7px 14px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;"
+              style="width:100%;padding:10px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;"
               onclick="bulkResendRefundReminders()">🔔 全部再次提醒退款資料</button>
           </div>
           <div id="refundCardContainer"><div style="color:#aaa;padding:20px;text-align:center;">載入中...</div></div>
@@ -775,7 +777,7 @@
             <button class="dispatched-btn" onclick="bulkMark('tw','已出貨')">📬 批量已出貨</button>
           </div>
           <div id="resend-bar-tw" style="display:none;padding:6px 16px 0;justify-content:flex-end;">
-            <button class="topbar-btn" style="background:#f59e0b;color:#fff;border-color:#f59e0b;font-size:12px;"
+            <button style="padding:8px 16px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;"
               onclick="resendAllArrivalNotifications()">🔔 全部重發到貨通知</button>
           </div>
           <div style="padding:10px 16px 0; display:flex; gap:8px; align-items:center;">
@@ -2585,7 +2587,7 @@ function setFilter(region, filter, btn) {
   const bulkDiv = document.getElementById('tw-bulk-action');
   if (bulkDiv) bulkDiv.style.display = (region === 'tw' && filter === 'shipped') ? 'flex' : 'none';
   const resendBar = document.getElementById('resend-bar-tw');
-  if (resendBar) resendBar.style.display = (region === 'tw' && filter === 'notified') ? 'flex' : 'none';
+  if (resendBar) resendBar.style.display = (region === 'tw' && filter === 'notified') ? 'block' : 'none';
 
   applyFilter(region);
 }
