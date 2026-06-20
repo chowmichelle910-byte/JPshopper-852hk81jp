@@ -703,9 +703,12 @@
         <div style="padding:24px; max-width:700px;">
           <div style="font-size:20px; font-weight:700; color:#111; margin-bottom:4px;">💸 退款區</div>
           <div style="font-size:13px; color:#888; margin-bottom:16px;">已發送缺貨通知、尚未完成退款的訂單</div>
-          <div style="display:flex; gap:8px; margin-bottom:16px;">
+          <div style="display:flex; gap:8px; margin-bottom:16px; align-items:center; flex-wrap:wrap;">
             <div class="refund-tab active" id="refundTabPending" onclick="setRefundTab('pending',this)">待退款</div>
             <div class="refund-tab" id="refundTabDone" onclick="setRefundTab('done',this)">已退款</div>
+            <button id="bulkResendRefundBtn"
+              style="margin-left:auto;padding:7px 14px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;"
+              onclick="bulkResendRefundReminders()">🔔 全部再次提醒退款資料</button>
           </div>
           <div id="refundCardContainer"><div style="color:#aaa;padding:20px;text-align:center;">載入中...</div></div>
         </div>
@@ -3193,6 +3196,29 @@ async function saveSfChanges() {
     alert('儲存失敗：' + e.message);
   }
   setTimeout(() => { if (btn) { btn.innerText = orig; btn.disabled = false; } updateFloatSave(); }, 2000);
+}
+
+async function bulkResendRefundReminders() {
+  const pending = allRefundOrders.filter(o => !(o.remark||'').includes('已退款'));
+  if (!pending.length) { alert('沒有待退款訂單'); return; }
+  if (!confirm(`確定要對 ${pending.length} 筆待退款訂單全部重發提醒信？`)) return;
+  const btn = document.getElementById('bulkResendRefundBtn');
+  btn.innerText = '⏳ 發送中...'; btn.disabled = true;
+  let success = 0;
+  for (const order of pending) {
+    try {
+      await fetch(GAS, {
+        method: 'POST', mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'sendStockoutInquiry', orderId: order.id,
+          outOfStockItems: [], inStockItems: [], isResend: true })
+      });
+      success++;
+    } catch(e) {}
+    await new Promise(r => setTimeout(r, 300));
+  }
+  btn.innerText = `✅ 已發送 ${success} 筆`;
+  setTimeout(() => { btn.innerText = '🔔 全部再次提醒退款資料'; btn.disabled = false; }, 3000);
 }
 
 function resendRefundReminder(orderId, btn) {
