@@ -288,7 +288,7 @@
       <p class="font-medium mb-1" style="color:#555;">已選商品明細：</p>
       <template x-for="item in cartItems" :key="item.id+'-'+item.sub">
         <div class="flex justify-between py-0.5 border-b border-dashed last:border-0" style="color:#888; border-color:#e0e0e0;">
-          <span class="truncate max-w-[240px]" x-text="`${item.name} (${item.sub}) x${item.qty}`"></span>
+          <span class="truncate max-w-[240px]" x-text="`${item.name}${item.sub ? ' {'+item.sub+'}' : ''} [x${item.qty}]`"></span>
           <span class="font-medium tw-accent" x-text="`NT$${parseFloat(item.twd||0) * parseInt(item.qty||1)}`"></span>
         </div>
       </template>
@@ -529,14 +529,13 @@ function shopApp() {
         alert('請確認所有必填欄位（姓名、手機號碼、電子信箱）及已勾選商品。'); return;
       }
       this.submitting = true;
-      let grouped = {};
+      // 新格式：ProductName {Sub} [xQty]（款式用{}，數量用[]）
       let totalJPYAmount = 0;
-      this.cartItems.forEach(item => {
-        if (!grouped[item.name]) grouped[item.name] = [];
-        grouped[item.name].push(`${item.sub} x${item.qty}`);
-        totalJPYAmount += (parseFloat(item.yen)||0) * item.qty;
-      });
-      const itemsSummary = Object.keys(grouped).map(n => `${n} (${grouped[n].join(', ')})`).join(', ');
+      this.cartItems.forEach(item => { totalJPYAmount += (parseFloat(item.yen)||0) * item.qty; });
+      const itemsSummary = this.cartItems.map(item => {
+        const subPart = item.sub ? ` {${item.sub}}` : '';
+        return `${item.name}${subPart} [x${item.qty}]`;
+      }).join(', ');
 
       const payload = {
         eventSheetName: this.sheetEventName,
