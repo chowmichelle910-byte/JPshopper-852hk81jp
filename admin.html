@@ -710,7 +710,7 @@
           <div style="margin-bottom:14px;">
             <button id="bulkResendRefundBtn"
               style="width:100%;padding:10px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;"
-              onclick="bulkResendRefundReminders()">🔔 全部再次提醒退款資料</button>
+              onclick="bulkResendRefundReminders()">🔔【再次通知】退款資料</button>
           </div>
           <div id="refundCardContainer"><div style="color:#aaa;padding:20px;text-align:center;">載入中...</div></div>
         </div>
@@ -3503,7 +3503,7 @@ function renderRefundCards() {
           </button>
           ${proofThumb}
           <button style="padding:7px 12px;background:none;border:1.5px solid #f59e0b;border-radius:7px;font-size:12px;color:#b45309;font-weight:600;cursor:pointer;"
-            onclick="resendRefundReminder('${order.id}', this)">🔔 再次提醒退款資料</button>
+            onclick="resendRefundReminder('${order.id}', this)">🔔【再次通知】退款資料</button>
           <button class="refund-sent-btn" ${btnDisabled} onclick="sendRefundConfirm('${order.id}', this)">已退款 →</button>
         </div>`}
       </div>`;
