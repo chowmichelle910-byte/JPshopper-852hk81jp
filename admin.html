@@ -410,6 +410,9 @@
       display: flex; align-items: center; gap: 10px;
       background: #fafafa; border-radius: 8px; padding: 8px 10px;
     }
+    .ocard-item.multi-qty {
+      background: #fffbeb; border: 1px solid #fde68a;
+    }
     .ocard-item-img {
       width: 40px; height: 40px; object-fit: cover;
       border-radius: 6px; border: 1px solid var(--border); flex-shrink: 0;
@@ -1420,12 +1423,12 @@ function renderOrders(orders, bodyId, region, cls) {
       const owedQty = itemOwedMap[owedKey] || 0;
       const owedBadge = owedQty > 0 ? `<span class="owed-badge">欠${owedQty}</span>` : '';
       itemsHtml += `
-        <div class="ocard-item">
+        <div class="ocard-item${item.qty > 1 ? ' multi-qty' : ''}">
           <img class="ocard-item-img" src="${imgSrc}" onerror="this.src='${fallback}'" />
           <div class="ocard-item-info">
             <div class="ocard-item-name">${item.name}${subText}${owedBadge}</div>
           </div>
-          <div class="ocard-item-price">× ${item.qty}</div>
+          <div class="ocard-item-price" style="${item.qty > 1 ? 'color:#b45309;font-size:13px;' : ''}">× ${item.qty}</div>
         </div>`;
     });
 
