@@ -410,6 +410,9 @@
       display: flex; align-items: center; gap: 10px;
       background: #fafafa; border-radius: 8px; padding: 8px 10px;
     }
+    .ocard-item.multi-qty {
+      background: #fffbeb; border: 1px solid #fde68a;
+    }
     .ocard-item-img {
       width: 40px; height: 40px; object-fit: cover;
       border-radius: 6px; border: 1px solid var(--border); flex-shrink: 0;
@@ -710,7 +713,7 @@
           <div style="margin-bottom:14px;">
             <button id="bulkResendRefundBtn"
               style="width:100%;padding:10px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:0.5px;"
-              onclick="bulkResendRefundReminders()">🔔 全部再次提醒退款資料</button>
+              onclick="bulkResendRefundReminders()">🔔【再次通知】退款資料</button>
           </div>
           <div id="refundCardContainer"><div style="color:#aaa;padding:20px;text-align:center;">載入中...</div></div>
         </div>
@@ -1420,12 +1423,12 @@ function renderOrders(orders, bodyId, region, cls) {
       const owedQty = itemOwedMap[owedKey] || 0;
       const owedBadge = owedQty > 0 ? `<span class="owed-badge">欠${owedQty}</span>` : '';
       itemsHtml += `
-        <div class="ocard-item">
+        <div class="ocard-item${item.qty > 1 ? ' multi-qty' : ''}">
           <img class="ocard-item-img" src="${imgSrc}" onerror="this.src='${fallback}'" />
           <div class="ocard-item-info">
             <div class="ocard-item-name">${item.name}${subText}${owedBadge}</div>
           </div>
-          <div class="ocard-item-price">× ${item.qty}</div>
+          <div class="ocard-item-price" style="${item.qty > 1 ? 'color:#b45309;font-size:13px;' : ''}">× ${item.qty}</div>
         </div>`;
     });
 
@@ -3503,7 +3506,7 @@ function renderRefundCards() {
           </button>
           ${proofThumb}
           <button style="padding:7px 12px;background:none;border:1.5px solid #f59e0b;border-radius:7px;font-size:12px;color:#b45309;font-weight:600;cursor:pointer;"
-            onclick="resendRefundReminder('${order.id}', this)">🔔 再次提醒退款資料</button>
+            onclick="resendRefundReminder('${order.id}', this)">🔔【再次通知】退款資料</button>
           <button class="refund-sent-btn" ${btnDisabled} onclick="sendRefundConfirm('${order.id}', this)">已退款 →</button>
         </div>`}
       </div>`;
