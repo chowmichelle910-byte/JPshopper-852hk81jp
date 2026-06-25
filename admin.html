@@ -2124,6 +2124,7 @@ function loadOrderSummary(eventName) {
       if (data.error) { grid.innerHTML = `<div class="os-empty">❌ ${data.error}</div>`; content.style.display = 'block'; return; }
       purchaseData = data.items || [];
       purchaseBatches = data.batches || [];
+      window._purchaseDateFilter = 'all'; // 換活動時重置日期篩選
       purchaseFilter = 'unbought';
       // 預設選「未購買」（第5個按鈕，index 4）
       const filterBtns = document.querySelectorAll('#purchaseFilterBtns .filter-btn');
@@ -2408,7 +2409,7 @@ function applyPurchaseFilter() {
     const selectedDate = window._purchaseDateFilter || 'all';
     // 提取所有日期（格式 yyyy/MM/dd → 轉 D/M）
     const allDates = [...new Set(purchaseBatches.map(b => b.date))].sort();
-    const fmtDate = d => { const p = d.split('/'); return p[2].replace(/^0/,'') + '/' + p[1].replace(/^0/,''); };
+    const fmtDate = d => { const p = d.split('/'); return p[1].replace(/^0/,'') + '/' + p[2].replace(/^0/,''); };
     let dateBar = `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;padding:10px 12px;background:#f9fafb;border-radius:8px;border:1px solid var(--border);">`;
     dateBar += `<button class="event-tab-btn${selectedDate==='all'?' active':''}" onclick="setPurchaseDateFilter('all')" style="font-size:12px;padding:5px 12px;">全部</button>`;
     allDates.forEach(d => {
@@ -2425,8 +2426,9 @@ function applyPurchaseFilter() {
       let batchHtml = `<div style="margin-bottom:16px;">
         <div style="font-size:12px;font-weight:700;color:#555;background:#f5f5f5;padding:6px 12px;border-radius:6px;margin-bottom:8px;">📅 ${batch.date}</div>
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">`;
-      for (const key in batch.items) {
-        const qty   = batch.items[key];
+      const bItems = Array.isArray(batch.items) ? Object.fromEntries(batch.items.map(i=>[i.name+'|'+i.sub, i.qty])) : (batch.items||{});
+      for (const key in bItems) {
+        const qty   = bItems[key];
         const parts = key.split('|');
         const name  = parts[0], sub = parts[1] || '';
         const displayName = name + (sub ? ` (${sub})` : '');
