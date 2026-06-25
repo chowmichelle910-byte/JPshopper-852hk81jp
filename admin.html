@@ -1596,15 +1596,17 @@ function renderOrders(orders, bodyId, region, cls) {
     card.innerHTML = `
       <div class="ocard-top">
         <span class="ocard-date${overdue ? ' overdue' : ''}">${fmtDate}${overdue ? ' ⚠️' : ''}</span>
-        <div style="display:flex; gap:6px; align-items:center;">
+        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
           <button class="edit-order-btn" data-oid="${order.id}" onclick="toggleEditMode(this.dataset.oid)">✏️ 編輯</button>
-          <button class="resend-btn" data-oid="${order.id}" onclick="resendPendingEmail(this.dataset.oid, this)">重發確認信</button>
-          ${!isPaid ? `<button class="reminder-btn" data-oid="${order.id}" onclick="sendManualReminder(this.dataset.oid, this)">⚠️ 催款</button>` : ''}
+          ${!isPaid ? `
+            <button class="resend-btn" data-oid="${order.id}" onclick="resendPendingEmail(this.dataset.oid, this)">重發確認信</button>
+            <button class="reminder-btn" data-oid="${order.id}" onclick="sendManualReminder(this.dataset.oid, this)">⚠️ 催款</button>
+          ` : ''}
           ${isPaid ? `<button class="stockout-inquiry-btn" onclick="openStockoutModal('${order.id}')">📦 缺貨通知</button>` : ''}
-          ${(order.status === '已到貨' || order.status === '已通知') ? `<button class="arrival-notify-btn" data-oid="${order.id}" onclick="sendArrivalNotification(this.dataset.oid, this)">🎉 到貨通知</button>` : ''}
-          ${order.status === '已下單' ? `<input type="checkbox" class="order-checkbox bulk-check" data-oid="${order.id}" data-region="${cls}" onchange="updateBulkBar('${cls}')"> <button class="printed-btn" data-oid="${order.id}" onclick="markStatus(this.dataset.oid,'已印單',this)">🖨️ 已印單</button>` : ''}
-          ${order.status === '已印單' ? `<input type="checkbox" class="order-checkbox bulk-check" data-oid="${order.id}" data-region="${cls}" onchange="updateBulkBar('${cls}')"> <button class="dispatched-btn" data-oid="${order.id}" onclick="markStatus(this.dataset.oid,'已出貨',this)">📬 已出貨</button>` : ''}
-          <button class="cancel-order-btn" data-oid="${order.id}" data-sum="${encodeURIComponent(order.summary || '')}" onclick="openCancelModal(this.dataset.oid, decodeURIComponent(this.dataset.sum))">取消訂單</button>
+          ${cls === 'tw' && (order.status === '已到貨' || order.status === '已通知') ? `<button class="arrival-notify-btn" data-oid="${order.id}" onclick="sendArrivalNotification(this.dataset.oid, this)">🎉 到貨通知</button>` : ''}
+          ${cls === 'tw' && order.status === '已下單' ? `<input type="checkbox" class="order-checkbox bulk-check" data-oid="${order.id}" data-region="${cls}" onchange="updateBulkBar('${cls}')"> <button class="printed-btn" data-oid="${order.id}" onclick="markStatus(this.dataset.oid,'已印單',this)">🖨️ 已印單</button>` : ''}
+          ${cls === 'tw' && order.status === '已印單' ? `<input type="checkbox" class="order-checkbox bulk-check" data-oid="${order.id}" data-region="${cls}" onchange="updateBulkBar('${cls}')"> <button class="dispatched-btn" data-oid="${order.id}" onclick="markStatus(this.dataset.oid,'已出貨',this)">📬 已出貨</button>` : ''}
+          ${order.status !== '已完結' && order.status !== '已取消' ? `<button class="cancel-order-btn" data-oid="${order.id}" data-sum="${encodeURIComponent(order.summary || '')}" onclick="openCancelModal(this.dataset.oid, decodeURIComponent(this.dataset.sum))">取消訂單</button>` : ''}
           <button id="btn-${order.id}" class="ocard-status-btn ${isPaid ? 'paid' : 'unpaid'}"
             ${isPaid ? 'disabled' : `onclick="confirmPayment('${order.id}')"`}>
             ${isPaid ? '✓ 已收款' : '確認收款 💰'}
@@ -1625,13 +1627,21 @@ function renderOrders(orders, bodyId, region, cls) {
         </div>
         ${order.paymentTime ? '<div style="font-size:11px;color:#10b981;margin-top:8px;padding-top:8px;border-top:1px dashed #e5e7eb;">Paid: ' + formatPaymentTime(order.paymentTime) + '</div>' : ''}
         ${order.remark ? '<div style="font-size:11px;color:#6b7280;margin-top:4px;">Note: ' + order.remark + '</div>' : ''}
+         ${(cls === 'tw' && (order.status === '已到貨' || order.status === '已通知' || order.status === '已下單' || order.status === '已印單' || order.status === '已出貨')) || (cls === 'hk' && isPaid) ? `
          <div class="shipment-row">
            <span style="font-size:11px;color:var(--muted);white-space:nowrap;">${cls === 'hk' ? '運單號碼' : '賣貨便網址'}</span>
            <input class="shipment-input" id="ship-${order.id}"
                   value="${order.shipmentRef || ''}"
                   placeholder="${cls === 'hk' ? '例如：SF1234567890' : '例如：https://buy.ruten.com.tw/...'}" />
            <button class="shipment-save-btn" onclick="saveShipmentRef('${order.id}', this)">儲存</button>
-         </div>
+         </div>` : ''}
+         ${cls === 'hk' && isPaid ? `
+         <div style="display:flex;gap:6px;margin-top:6px;">
+           <button style="flex:1;padding:5px 8px;background:#e3f2fd;border:1px solid #90caf9;color:#1565c0;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;"
+             onclick="sendHKEmail('${order.id}','shipping')">✉️ 到港途中</button>
+           <button style="flex:1;padding:5px 8px;background:#f0fff4;border:1px solid #86efac;color:#166534;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;"
+             onclick="sendHKEmail('${order.id}','delivered')">✉️ 已寄出</button>
+         </div>` : ''}
 
           ${(isPaid && ((order.pickupType||'').includes('賣貨便') || (order.payMethod||'').includes('郵局'))) ? `
           <div class="sf-section" id="sf-${order.id}">
@@ -4433,6 +4443,27 @@ function renderProfitPage() {
         </span>
       </div>
     </div>`;
+}
+
+function sendHKEmail(orderId, type) {
+  const trackingNo = document.getElementById('ship-' + orderId)?.value?.trim() || '';
+  const action = type === 'shipping' ? 'sendHKShipping' : 'sendHKDelivered';
+  const label  = type === 'shipping' ? '到港途中' : '已寄出';
+  if (!confirm(`確定發送「${label}」通知給訂單 ${orderId}？\n運單號碼：${trackingNo || '（未填）'}`)) return;
+  fetch(GAS, {
+    method: 'POST',
+    body: JSON.stringify({ action, orderId, trackingNo })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.result === 'success') {
+      alert(`✅ 「${label}」Email 已發送！`);
+      if (type === 'delivered') fetchOrders();
+    } else {
+      alert('❌ 發送失敗：' + (data.message || ''));
+    }
+  })
+  .catch(e => alert('❌ 錯誤：' + e));
 }
 
 function saveShipmentRef(orderId, btn) {
