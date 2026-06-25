@@ -476,7 +476,7 @@
     .filter-btn.active-filter.hk { background: var(--hk); border-color: var(--hk); }
     .filter-btn.active-filter.tw { background: var(--tw); border-color: var(--tw); }
 
-    /* ── 訂貨區 ── */
+    /* ── 買貨區 ── */
     .order-summary-grid { display: flex; flex-direction: column; gap: 14px; }
     .oscard {
       background: var(--card); border: 1.5px solid var(--border);
@@ -680,7 +680,7 @@
         <span class="nav-icon">📦</span> 庫存管理
       </div>
       <div class="nav-item" onclick="goto('purchase'); closeSidebar();" id="nav-purchase">
-        <span class="nav-icon">🛒</span> 訂貨區
+        <span class="nav-icon">🛒</span> 買貨區
       </div>
       <div class="nav-item" onclick="goto('settle'); closeSidebar();" id="nav-settle">
         <span class="nav-icon">💵</span> 結算區
@@ -838,8 +838,14 @@
         </div>
         <div id="currentEventLabelStock" class="current-event-label">目前選擇：<strong id="currentEventTextStock">-</strong></div>
         <div class="card" id="stockCard" style="display:none;">
-          <div class="card-title"><span>🔧</span> 商品庫存設定
-            <span style="font-size:11px; font-weight:400; color:var(--muted);">— 缺貨按鈕 = 寫入 0，再按取消</span>
+          <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+            <span><span>🔧</span> 商品庫存設定
+              <span style="font-size:11px; font-weight:400; color:var(--muted);">— 缺貨按鈕 = 寫入 0，再按取消</span>
+            </span>
+            <button id="stockBatchSaveBtn" onclick="saveStockChanges()"
+              style="display:none;padding:7px 16px;background:#111;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">
+              💾 儲存變更 <span id="stockBatchCount" style="background:#fff;color:#111;border-radius:10px;padding:1px 7px;margin-left:4px;font-size:11px;">0</span>
+            </button>
           </div>
           <div class="stock-grid" id="stockGrid">
             <div class="stock-empty">請先選擇活動</div>
@@ -847,7 +853,7 @@
         </div>
       </div>
 
-      <!-- ════ PAGE: 訂貨區 ════ -->
+      <!-- ════ PAGE: 買貨區 ════ -->
       <div class="page" id="page-purchase">
         <div class="card">
           <div class="card-title" style="display:flex; align-items:center; justify-content:space-between;">
@@ -1301,7 +1307,7 @@ async function loadSheetList() {
 }
 
 // ── Navigation ──
-const pageTitles = { orders:'所有訂單', picking:'執貨清單', refund:'退款區', stock:'庫存管理', purchase:'訂貨區', settle:'結算區', profit:'盈利計算', events:'建立活動', products:'上架商品' };
+const pageTitles = { orders:'所有訂單', picking:'執貨清單', refund:'退款區', stock:'庫存管理', purchase:'買貨區', settle:'結算區', profit:'盈利計算', events:'建立活動', products:'上架商品' };
 function goto(page) {
   currentPage = page;
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -1895,6 +1901,14 @@ function updateFloatSave() {
   if (badge) badge.innerText = `已修改 ${displayCount} 項`;
   const el = document.getElementById('floatSave');
   if (el) el.className = 'float-save' + (visible ? ' visible' : '');
+
+  // 同步更新 stockCard 內的批量儲存按鈕
+  const sbBtn = document.getElementById('stockBatchSaveBtn');
+  const sbCount = document.getElementById('stockBatchCount');
+  if (sbBtn) {
+    sbBtn.style.display = stockCount > 0 ? 'inline-flex' : 'none';
+    if (sbCount) sbCount.innerText = stockCount;
+  }
 }
 
 function addSubStockLimit(rowNum, sub, inputEl, btn) {
@@ -1947,7 +1961,7 @@ function addStockLimit(productName, sub, inputEl) {
 }
 
 function saveStockChanges() {
-  // 根據當前頁面決定儲存庫存還是訂貨區
+  // 根據當前頁面決定儲存庫存還是買貨區
   if (currentPage === 'purchase') { savePurchasedChanges(); return; }
   if (currentPage === 'settle') { saveSettleChanges(); return; }
   if (currentPage === 'orders') { saveSfChanges(); return; }
@@ -2024,7 +2038,7 @@ function savePurchasedChanges() {
   });
 }
 
-// ── 訂貨區 ──
+// ── 買貨區 ──
 let purchasedQtyMap = {};   // { "eventName": { "name|sub": purchasedQty } }
 let purchaseData = [];      // 當前載入的訂貨摘要
 let purchaseBatches = [];   // 批次購買歷史 [{ date, items }]
@@ -2134,7 +2148,7 @@ function loadOrderSummary(eventName) {
       purchaseData = data.items || [];
       purchaseBatches = data.batches || [];
       window._purchaseDateFilter = 'all'; // 換活動時重置日期篩選
-      console.log('[訂貨區] purchaseBatches:', purchaseBatches.length, '批次', purchaseBatches);
+      console.log('[買貨區] purchaseBatches:', purchaseBatches.length, '批次', purchaseBatches);
       purchaseFilter = 'unbought';
       // 預設選「未購買」（第5個按鈕，index 4）
       const filterBtns = document.querySelectorAll('#purchaseFilterBtns .filter-btn');
@@ -2374,7 +2388,7 @@ function clearAllVisible() {
 function selectAllBought() { selectAllVisible(); }
 function clearAllBought() { clearAllVisible(); }
 
-// ── 訂貨區篩選 ──
+// ── 買貨區篩選 ──
 function setPurchaseDateFilter(date) {
   window._purchaseDateFilter = date;
   // 重新渲染已購買 filter
@@ -2680,7 +2694,7 @@ function updatePurchaseFloatSave() {
   const count = Object.keys(purchaseChanges).length;
   const el = document.getElementById('floatSave');
   document.getElementById('floatBadge').innerText = `已修改 ${count} 項`;
-  // 只在訂貨區才顯示
+  // 只在買貨區才顯示
   el.className = 'float-save' + (count > 0 && currentPage === 'purchase' ? ' visible' : '');
 }
 
