@@ -2125,6 +2125,7 @@ function loadOrderSummary(eventName) {
       purchaseData = data.items || [];
       purchaseBatches = data.batches || [];
       window._purchaseDateFilter = 'all'; // 換活動時重置日期篩選
+      console.log('[訂貨區] purchaseBatches:', purchaseBatches.length, '批次', purchaseBatches);
       purchaseFilter = 'unbought';
       // 預設選「未購買」（第5個按鈕，index 4）
       const filterBtns = document.querySelectorAll('#purchaseFilterBtns .filter-btn');
@@ -2398,10 +2399,42 @@ function applyPurchaseFilter() {
       });
     });
 
+    console.log('[已購買] purchaseBatches:', purchaseBatches.length, purchaseBatches.map(b=>b.date));
     if (!purchaseBatches.length) {
-      grid.innerHTML = '<div class="os-empty">暫無購買紀錄</div>';
+      // Fallback：用 F欄（purchased）數量直接顯示
+      const hasPurchased = purchaseData.some(p => p.subs.some(s => (s.purchased||0) > 0));
+      if (!hasPurchased) {
+        grid.innerHTML = '<div class="os-empty">暫無購買紀錄</div>';
+        document.getElementById('osTotalLabel').innerText = '💰 已購買日幣總額';
+        document.getElementById('osTotalYen').innerText = '¥ 0';
+        return;
+      }
+      // 沒有批次記錄但有已購買數量 → 顯示商品列表（無日期分組）
+      let fallbackHtml = '<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:8px 12px;font-size:12px;color:#92400e;margin-bottom:12px;">📋 找不到批次購買紀錄，顯示 F欄已購買數量</div>';
+      fallbackHtml += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">';
+      let fallbackYen = 0;
+      purchaseData.forEach(p => {
+        p.subs.forEach(s => {
+          const qty = s.purchased || 0;
+          if (!qty) return;
+          const imgSrc = photoMap[p.name] || fallback;
+          const displayName = p.name + (s.sub ? ` (${s.sub})` : '');
+          const itemTotal = (s.yenEach||0) * qty;
+          fallbackYen += itemTotal;
+          fallbackHtml += `<div style="background:#fafafa;border:1px solid #eee;border-radius:8px;overflow:hidden;text-align:center;">
+            <img src="${imgSrc}" onerror="this.src='${fallback}'" style="width:100%;aspect-ratio:1;object-fit:cover;display:block;">
+            <div style="padding:6px 4px 8px;">
+              <div style="font-size:10px;color:#333;line-height:1.3;margin-bottom:4px;">${displayName}</div>
+              <div style="font-size:16px;font-weight:800;color:#111;background:#f0f0f0;border-radius:5px;padding:2px 6px;display:inline-block;">×${qty}</div>
+              ${s.yenEach ? `<div style="font-size:10px;color:#888;margin-top:2px;">¥${itemTotal.toLocaleString()}</div>` : ''}
+            </div>
+          </div>`;
+        });
+      });
+      fallbackHtml += '</div>';
+      grid.innerHTML = fallbackHtml;
       document.getElementById('osTotalLabel').innerText = '💰 已購買日幣總額';
-      document.getElementById('osTotalYen').innerText = '¥ 0';
+      document.getElementById('osTotalYen').innerText = '¥ ' + fallbackYen.toLocaleString();
       return;
     }
 
