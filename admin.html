@@ -157,7 +157,14 @@
       color: var(--muted); transition: all 0.15s;
     }
     .event-tab-btn:hover { border-color: var(--ink); color: var(--ink); }
-    .event-tab-btn.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+    .event-tab-btn.active { background: var(--ink) !important; color: #fff !important; border-color: var(--ink) !important; font-weight: 700; box-shadow: 0 2px 6px rgba(0,0,0,0.25); }
+    .event-tab-btn.ended { background: #e3f2fd; border-color: #90caf9; color: #1565c0; }
+    .event-tab-btn.ended.active { background: #1565c0 !important; color: #fff !important; border-color: #1565c0 !important; }
+    .page-loading { display:none; padding:30px; text-align:center; color:#aaa; font-size:13px; }
+    .page-loading.show { display:block; }
+    .current-event-label { display:none; font-size:12px; color:#888; margin-top:8px; padding:4px 0; }
+    .current-event-label.show { display:block; }
+    .current-event-label strong { color:#111; font-weight:700; }
     .event-section-label { font-size:10px; font-weight:700; letter-spacing:1px; color:#fff; background:#2980b9; padding:2px 8px; border-radius:10px; margin-top:4px; margin-right:2px; display:inline-flex; align-items:center; }
     .event-tabs.has-ended { gap:6px; }
     .stock-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
@@ -829,6 +836,7 @@
             <div style="color:#bbb; font-size:13px;">載入中...</div>
           </div>
         </div>
+        <div id="currentEventLabelStock" class="current-event-label">目前選擇：<strong id="currentEventTextStock">-</strong></div>
         <div class="card" id="stockCard" style="display:none;">
           <div class="card-title"><span>🔧</span> 商品庫存設定
             <span style="font-size:11px; font-weight:400; color:var(--muted);">— 缺貨按鈕 = 寫入 0，再按取消</span>
@@ -854,6 +862,7 @@
           </div>
         </div>
 
+        <div id="currentEventLabelPurchase" class="current-event-label">目前選擇：<strong id="currentEventTextPurchase">-</strong></div>
         <div id="purchaseContent" style="display:none;">
           <!-- 篩選列 -->
           <div style="display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
@@ -1375,7 +1384,7 @@ function renderEventTabs(containerId, mode) {
     endedWrap.style.cssText = 'display:none;flex-wrap:wrap;gap:6px;margin-top:4px;';
     ended.forEach(name => {
       const btn = makeBtn(name);
-      btn.style.cssText = 'background:#e3f2fd;border-color:#90caf9;color:#1565c0;';
+      btn.classList.add('ended');  // 用 class 代替 inline style，讓 active 能正常覆蓋
       endedWrap.appendChild(btn);
     });
 
@@ -4022,7 +4031,7 @@ function loadSettleData(eventName) {
   const contentEl = document.getElementById('settleContent');
   const grid = document.getElementById('settleGrid');
   contentEl.style.display = 'none';
-  grid.innerHTML = '<div class="os-empty">載入中...</div>';
+  grid.innerHTML = '<div class="os-empty">⏳ 載入中...</div>';
 
   fetch(GAS + '?action=getOrderSummary&event=' + encodeURIComponent(eventName))
     .then(r => r.json())
@@ -4228,7 +4237,7 @@ function loadProfitData(eventName) {
   const contentEl = document.getElementById('profitContent');
   const grid = document.getElementById('profitGrid');
   contentEl.style.display = 'none';
-  grid.innerHTML = '<div class="os-empty">載入中...</div>';
+  grid.innerHTML = '<div class="os-empty">⏳ 載入中...</div>';
   contentEl.style.display = 'block';
 
   fetch(GAS + '?action=getProfitData&event=' + encodeURIComponent(eventName))
