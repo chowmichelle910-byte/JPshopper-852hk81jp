@@ -788,21 +788,19 @@
               <button class="filter-btn" onclick="setFilter('tw','paid',this)">已付款</button>
               <button class="filter-btn" onclick="setFilter('tw','shipped',this)">已到貨</button>
               <button class="filter-btn" onclick="setFilter('tw','notified',this)">已通知</button>
+              <button id="resend-arrival-btn"
+                onclick="resendAllArrivalNotifications()"
+                style="display:none;padding:5px 10px;background:#f59e0b;color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">
+                🔔 重發到貨
+              </button>
               <button class="filter-btn" onclick="setFilter('tw','ordered',this)">已下單</button>
               <button class="filter-btn" onclick="setFilter('tw','printed',this)">已印單</button>
               <button class="filter-btn" onclick="setFilter('tw','dispatched',this)">已出貨</button>
               <button class="filter-btn" onclick="setFilter('tw','cancelled',this)">已取消</button>
-              <span style="color:#ddd;margin:0 2px;">│</span>
-              <button onclick="resendAllArrivalNotifications()"
-                style="padding:5px 10px;background:#f59e0b;color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">
-                🔔 重發到貨
-              </button>
+
             </div>
           </div>
-          <div id="tw-bulk-action" style="display:none; padding:6px 16px 0; justify-content:flex-end;">
-            <button class="topbar-btn" style="background:#10b981;color:#fff;border-color:#10b981;font-size:12px;"
-              onclick="sendAllArrivalNotifications()">🎉 全部發送到貨通知</button>
-          </div>
+
           <div id="bulk-bar-tw" class="bulk-bar">
             <input type="checkbox" id="selectAll-tw" class="order-checkbox" onchange="toggleSelectAll('tw',this.checked)">
             <label for="selectAll-tw" style="font-size:12px;color:#555;">全選</label>
@@ -842,10 +840,16 @@
             <span><span>🔧</span> 商品庫存設定
               <span style="font-size:11px; font-weight:400; color:var(--muted);">— 缺貨按鈕 = 寫入 0，再按取消</span>
             </span>
-            <button id="stockBatchSaveBtn" onclick="saveStockChanges()"
-              style="display:none;padding:7px 16px;background:#111;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">
-              💾 儲存變更 <span id="stockBatchCount" style="background:#fff;color:#111;border-radius:10px;padding:1px 7px;margin-left:4px;font-size:11px;">0</span>
-            </button>
+            <div style="display:flex;gap:8px;align-items:center;">
+              <button onclick="syncCurrentEventToSupabase()"
+                style="padding:6px 12px;background:#e8f5e9;border:1px solid #a5d6a7;color:#2e7d32;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">
+                ☁️ 同步 Supabase
+              </button>
+              <button id="stockBatchSaveBtn" onclick="saveStockChanges()"
+                style="display:none;padding:7px 16px;background:#111;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">
+                💾 儲存變更 <span id="stockBatchCount" style="background:#fff;color:#111;border-radius:10px;padding:1px 7px;margin-left:4px;font-size:11px;">0</span>
+              </button>
+            </div>
           </div>
           <div class="stock-grid" id="stockGrid">
             <div class="stock-empty">請先選擇活動</div>
@@ -1149,6 +1153,18 @@ const CLOUDINARY_KEY    = '474598516575124';
 const CLOUDINARY_SECRET = 'mh1dbws3zmjNdgpY2kq8lfbUQIg';
 
 const GAS = "https://script.google.com/macros/s/AKfycbzgsFv9_AjExH0VCh1m6DX18qTmXMKwO0xiBGQfYqvO2Q6nb5ZNeXRbsdRsbGVcFidIQw/exec";
+
+// ── Supabase Client (買貨區) ──
+const SUPA_URL = 'https://pksqfpirggvsftvqrtji.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBrc3FmcGlyZ2d2c2Z0dnFydGppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0MDE3MDQsImV4cCI6MjA5Nzk3NzcwNH0.TyGBeMNn91UCNEVhT-q4ivtgvXQL_GOLmdvtGMUIWuc';
+const SUPA_H = { 'apikey': SUPA_KEY, 'Authorization': 'Bearer ' + SUPA_KEY, 'Content-Type': 'application/json', 'Prefer': 'resolution=merge-duplicates,return=minimal' };
+async function sbAdminGet(path) {
+  const r = await fetch(`${SUPA_URL}/rest/v1/${path}`, { headers: SUPA_H });
+  return r.ok ? r.json() : [];
+}
+async function sbAdminUpsert(table, rows) {
+  await fetch(`${SUPA_URL}/rest/v1/${table}`, { method:'POST', headers: SUPA_H, body: JSON.stringify(rows) });
+}
 const EXCLUDED = ["Blank","易寄取地址","訂單紀錄","收單截止時間","購貨紀錄","盈利紀錄"];
 
 // ── State ──
@@ -1752,6 +1768,29 @@ function confirmPayment(orderId) {
 }
 
 // ── Stock ──
+
+function syncCurrentEventToSupabase() {
+  const evName = currentStockSheet;
+  if (!evName) { alert('請先選擇活動'); return; }
+  const btn = event.currentTarget;
+  btn.innerText = '⏳ 同步中...'; btn.disabled = true;
+  fetch(GAS, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'syncEventToSupabase', eventName: evName })
+  })
+  .then(r => r.json())
+  .then(data => {
+    btn.innerText = '☁️ 同步 Supabase'; btn.disabled = false;
+    if (data.result === 'ok') {
+      alert(`✅ 已同步「${evName}」到 Supabase（${data.synced || 0} 件商品）`);
+    } else {
+      alert('❌ 同步失敗：' + (data.message || JSON.stringify(data)));
+    }
+  })
+  .catch(e => { btn.innerText = '☁️ 同步 Supabase'; btn.disabled = false; alert('❌ 錯誤：' + e); });
+}
+
 function loadProducts(sheetName) {
   currentStockSheet = sheetName;
   stockChanges = {};
@@ -2006,44 +2045,46 @@ function saveStockChanges() {
 function savePurchasedChanges() {
   const count = Object.keys(purchaseChanges).length;
   if (!count || !currentPurchaseEvent) return;
-  if (!confirm(`確定要儲存「${currentPurchaseEvent}」的已購買數量（${count} 項）到購貨紀錄嗎？`)) return;
+  if (!confirm(`確定要儲存「${currentPurchaseEvent}」的已購買數量（${count} 項）？`)) return;
 
   const btn = document.querySelector('.float-btn');
-  btn.innerText = '儲存中...';
-  btn.disabled = true;
+  btn.innerText = '儲存中...'; btn.disabled = true;
 
-  // 只儲存有修改過的項目
-  const items = [];
+  const cleanEv = currentPurchaseEvent.replace(/^\[END\]\s*/i,'');
+  const upsertRows = [];
+  const gasItems   = [];
+
   purchaseData.forEach(product => {
     product.subs.forEach(sub => {
-      const key = product.name + '|' + sub.sub;
-      if (purchaseChanges.hasOwnProperty(key)) {
-        // 只有用戶真正修改過的才儲存
-        items.push({ name: product.name, sub: sub.sub, qty: sub.qty, purchased: purchaseChanges[key] });
-      }
+      const key = product.name + '|' + (sub.sub||'');
+      if (!purchaseChanges.hasOwnProperty(key)) return;
+      const newPurchased = purchaseChanges[key];
+      upsertRows.push({
+        event_name: cleanEv, product_name: product.name, sub_name: sub.sub||'',
+        yen_price: sub.yenEach||0, qty_paid: sub.paid||0, qty_unpaid: sub.unpaid||0,
+        qty_purchased: newPurchased, qty_settled: sub.settled||0,
+        updated_at: new Date().toISOString()
+      });
+      gasItems.push({ name: product.name, sub: sub.sub, qty: sub.qty, purchased: newPurchased });
     });
   });
 
-  if (items.length === 0) {
-    alert('沒有任何修改需要儲存。');
-    return;
-  }
+  if (!upsertRows.length) { alert('沒有任何修改需要儲存。'); return; }
 
-  fetch(GAS, {
-    method: 'POST', mode: 'no-cors',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ action: 'savePurchased', eventName: currentPurchaseEvent, items })
-  }).then(() => {
+  // 1. 寫入 Supabase（即時）
+  sbAdminUpsert('purchase_records', upsertRows).then(() => {
+    // 2. 同步寫回 GAS Sheet（背景）
+    fetch(GAS, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'savePurchased', eventName: currentPurchaseEvent, items: gasItems })
+    }).catch(e => console.warn('GAS sync:', e));
+
     purchaseChanges = {};
-    btn.innerText = '💾 確認儲存';
-    btn.disabled = false;
-    alert(`✅ 已成功儲存 ${items.length} 項購貨紀錄！`);
-    // 重新從 GAS 載入，讓已完成項目自動消失
+    btn.innerText = '💾 確認儲存'; btn.disabled = false;
+    alert(`✅ 已成功儲存 ${upsertRows.length} 項購貨紀錄！`);
     loadOrderSummary(currentPurchaseEvent);
   }).catch(err => {
     alert('❌ 儲存失敗，請重試。');
-    btn.innerText = '💾 確認儲存';
-    btn.disabled = false;
+    btn.innerText = '💾 確認儲存'; btn.disabled = false;
     console.error(err);
   });
 }
@@ -2151,22 +2192,35 @@ function loadOrderSummary(eventName) {
   const ct = document.getElementById('osTotalYen');
   ct.innerText = '¥ —';
 
-  fetch(GAS + '?action=getOrderSummary&event=' + encodeURIComponent(eventName))
-    .then(r => r.json())
-    .then(data => {
-      if (data.error) { grid.innerHTML = `<div class="os-empty">❌ ${data.error}</div>`; content.style.display = 'block'; return; }
-      purchaseData = data.items || [];
-      purchaseBatches = data.batches || [];
-      window._purchaseDateFilter = 'all'; // 換活動時重置日期篩選
-      console.log('[買貨區] purchaseBatches:', purchaseBatches.length, '批次', purchaseBatches);
-      purchaseFilter = 'unbought';
-      // 預設選「未購買」（第5個按鈕，index 4）
-      const filterBtns = document.querySelectorAll('#purchaseFilterBtns .filter-btn');
-      filterBtns.forEach((b,i) => b.className = i===4 ? 'filter-btn active-filter' : 'filter-btn');
-      content.style.display = 'block';
-      renderOrderSummary();
-    })
-    .catch(e => { grid.innerHTML = '<div class="os-empty">❌ 載入失敗，請確認 GAS 已重新部署。</div>'; content.style.display = 'block'; console.error(e); });
+  // ── 從 Supabase 讀取買貨區（快 3-5x）──
+  const evClean = eventName.replace(/^\[END\]\s*/i,'');
+  const evEnc   = encodeURIComponent(evClean);
+  Promise.all([
+    sbAdminGet(`purchase_records?event_name=eq.${evEnc}&select=*&order=product_name,sub_name`),
+    sbAdminGet(`purchase_batches?event_name=eq.${evEnc}&select=*&order=batch_date,product_name`)
+  ]).then(([records, batchRows]) => {
+    // 轉換為 purchaseData 格式
+    const groups = {};
+    (records||[]).forEach(r => {
+      if (!groups[r.product_name]) groups[r.product_name] = [];
+      groups[r.product_name].push({ sub: r.sub_name, yenEach: r.yen_price, paid: r.qty_paid, unpaid: r.qty_unpaid, purchased: r.qty_purchased, settled: r.qty_settled, photo: '' });
+    });
+    purchaseData = Object.keys(groups).map(name => ({ name, subs: groups[name] }));
+    // 批次資料
+    const bMap = {};
+    (batchRows||[]).forEach(b => {
+      if (!bMap[b.batch_date]) bMap[b.batch_date] = {};
+      const k = b.product_name + '|' + b.sub_name;
+      bMap[b.batch_date][k] = (bMap[b.batch_date][k]||0) + b.qty;
+    });
+    purchaseBatches = Object.keys(bMap).sort((a,b)=>b.localeCompare(a)).map(d=>({date:d,items:bMap[d]}));
+    window._purchaseDateFilter = 'all';
+    purchaseFilter = 'unbought';
+    const filterBtns = document.querySelectorAll('#purchaseFilterBtns .filter-btn');
+    filterBtns.forEach((b,i) => b.className = i===4 ? 'filter-btn active-filter' : 'filter-btn');
+    content.style.display = 'block';
+    renderOrderSummary();
+  }).catch(e => { grid.innerHTML = '<div class="os-empty">❌ 讀取失敗</div>'; content.style.display='block'; console.error(e); });
 }
 
 function renderOrderSummary() {
@@ -2828,10 +2882,9 @@ function setFilter(region, filter, btn) {
   });
   btn.className = 'filter-btn ' + activeClass;
 
-  // 全部發送按鈕只在 TW 已到貨時顯示
-  const bulkDiv = document.getElementById('tw-bulk-action');
-  if (bulkDiv) bulkDiv.style.display = (region === 'tw' && filter === 'shipped') ? 'flex' : 'none';
-
+  // 🔔 重發到貨：只在 TW 已通知 filter 時顯示
+  const resendBtn = document.getElementById('resend-arrival-btn');
+  if (resendBtn) resendBtn.style.display = (region === 'tw' && filter === 'notified') ? 'inline-block' : 'none';
 
   applyFilter(region);
 }
