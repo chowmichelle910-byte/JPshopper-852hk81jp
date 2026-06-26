@@ -2195,32 +2195,63 @@ function loadOrderSummary(eventName) {
   // ── 從 Supabase 讀取買貨區（快 3-5x）──
   const evClean = eventName.replace(/^\[END\]\s*/i,'');
   const evEnc   = encodeURIComponent(evClean);
-  Promise.all([
-    sbAdminGet(`purchase_records?event_name=eq.${evEnc}&select=*&order=product_name,sub_name`),
-    sbAdminGet(`purchase_batches?event_name=eq.${evEnc}&select=*&order=batch_date,product_name`)
-  ]).then(([records, batchRows]) => {
-    // 轉換為 purchaseData 格式
-    const groups = {};
-    (records||[]).forEach(r => {
-      if (!groups[r.product_name]) groups[r.product_name] = [];
-      groups[r.product_name].push({ sub: r.sub_name, yenEach: r.yen_price, paid: r.qty_paid, unpaid: r.qty_unpaid, purchased: r.qty_purchased, settled: r.qty_settled, photo: '' });
-    });
-    purchaseData = Object.keys(groups).map(name => ({ name, subs: groups[name] }));
-    // 批次資料
-    const bMap = {};
-    (batchRows||[]).forEach(b => {
-      if (!bMap[b.batch_date]) bMap[b.batch_date] = {};
-      const k = b.product_name + '|' + b.sub_name;
-      bMap[b.batch_date][k] = (bMap[b.batch_date][k]||0) + b.qty;
-    });
-    purchaseBatches = Object.keys(bMap).sort((a,b)=>b.localeCompare(a)).map(d=>({date:d,items:bMap[d]}));
+
+  function applyPurchaseLoadResult(purchaseDataResult, purchaseBatchesResult) {
+    purchaseData    = purchaseDataResult;
+    purchaseBatches = purchaseBatchesResult;
     window._purchaseDateFilter = 'all';
     purchaseFilter = 'unbought';
     const filterBtns = document.querySelectorAll('#purchaseFilterBtns .filter-btn');
     filterBtns.forEach((b,i) => b.className = i===4 ? 'filter-btn active-filter' : 'filter-btn');
     content.style.display = 'block';
     renderOrderSummary();
-  }).catch(e => { grid.innerHTML = '<div class="os-empty">❌ 讀取失敗</div>'; content.style.display='block'; console.error(e); });
+  }
+
+  function loadFromGAS() {
+    // fallback：從 GAS 讀（較慢但有完整資料）
+    grid.innerHTML = '<div class="os-empty">⏳ 從 GAS 載入中...</div>';
+    fetch(GAS + '?action=getOrderSummary&event=' + encodeURIComponent(eventName))
+      .then(r => r.json())
+      .then(data => {
+        if (data.error) { grid.innerHTML = `<div class="os-empty">❌ ${data.error}</div>`; content.style.display='block'; return; }
+        applyPurchaseLoadResult(data.items || [], data.batches || []);
+        // 有資料的話，背景同步到 Supabase
+        if ((data.items||[]).length > 0) {
+          fetch(GAS, { method:'POST', body: JSON.stringify({ action:'syncPurchaseRecords', eventName }) }).catch(()=>{});
+        }
+      })
+      .catch(e => { grid.innerHTML = '<div class="os-empty">❌ 載入失敗</div>'; content.style.display='block'; });
+  }
+
+  Promise.all([
+    sbAdminGet(`purchase_records?event_name=eq.${evEnc}&select=*&order=product_name,sub_name`),
+    sbAdminGet(`purchase_batches?event_name=eq.${evEnc}&select=*&order=batch_date,product_name`)
+  ]).then(([records, batchRows]) => {
+    // 如果 Supabase 無資料，fallback 到 GAS
+    if (!records || records.length === 0) {
+      console.log('[買貨區] Supabase 無資料，fallback 到 GAS');
+      loadFromGAS();
+      return;
+    }
+    const groups = {};
+    records.forEach(r => {
+      if (!groups[r.product_name]) groups[r.product_name] = [];
+      groups[r.product_name].push({ sub: r.sub_name, yenEach: r.yen_price, paid: r.qty_paid, unpaid: r.qty_unpaid, purchased: r.qty_purchased, settled: r.qty_settled, photo: '' });
+    });
+    const bMap = {};
+    (batchRows||[]).forEach(b => {
+      if (!bMap[b.batch_date]) bMap[b.batch_date] = {};
+      const k = b.product_name + '|' + b.sub_name;
+      bMap[b.batch_date][k] = (bMap[b.batch_date][k]||0) + b.qty;
+    });
+    applyPurchaseLoadResult(
+      Object.keys(groups).map(name => ({ name, subs: groups[name] })),
+      Object.keys(bMap).sort((a,b)=>b.localeCompare(a)).map(d=>({date:d,items:bMap[d]}))
+    );
+  }).catch(e => {
+    console.warn('[買貨區] Supabase 失敗，fallback 到 GAS', e);
+    loadFromGAS();
+  });
 }
 
 function renderOrderSummary() {
