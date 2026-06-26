@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>現場快閃代購 — 852hk.81jp</title>
+  <title>現場快閃代購 — 886tw.81jp</title>
   <link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;600&family=Noto+Sans+TC:wght@300;400;500&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
@@ -67,7 +67,7 @@
 
 <!-- Topbar -->
 <div class="topbar">
-  <a href="/" style="font-family:'Shippori Mincho',serif; font-size:16px; font-weight:600; letter-spacing:3px; color:#1a1a1a; text-decoration:none;">852hk.81jp</a>
+  <a href="/" style="font-family:'Shippori Mincho',serif; font-size:16px; font-weight:600; letter-spacing:3px; color:#1a1a1a; text-decoration:none;">886tw.81jp</a>
   <button class="hamburger" id="hamBtn"><span></span><span></span><span></span></button>
 </div>
 
@@ -248,17 +248,42 @@
         </div>
       </div>
 
-      <!-- Payment（TW版：郵局匯款） -->
+      <!-- Payment（TW版：郵局匯款 / LINE PAY） -->
       <div class="jp-card p-4 space-y-3 mb-6 max-w-2xl">
         <h2 class="text-sm font-medium border-l-2 pl-2" style="border-color:#2980b9;">付款方式</h2>
-        <div class="px-2">
-          <label class="flex items-center space-x-2 text-sm">
-            <input type="radio" name="payment" value="郵局銀行匯款" x-model="form.paymentMethod" checked>
-            <span>郵局銀行匯款</span>
+        <div class="space-y-2 px-2">
+          <label class="flex items-center space-x-2 text-sm cursor-pointer">
+            <input type="radio" name="payment" value="郵局銀行匯款" x-model="form.paymentMethod">
+            <span>🏦 郵局銀行匯款</span>
+          </label>
+          <label class="flex items-center space-x-2 text-sm cursor-pointer">
+            <input type="radio" name="payment" value="LINE PAY" x-model="form.paymentMethod">
+            <span><span style="display:inline-flex;align-items:center;gap:4px;"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect width="16" height="16" rx="4" fill="#00B900"/><text x="2" y="12" font-size="9" fill="white" font-weight="bold">L</text></svg> LINE PAY</span></span>
           </label>
         </div>
-        <div style="background:#f0f7ff; border:1px solid #bbdefb; border-radius:6px; padding:12px 14px; font-size:12px; color:#37474f; line-height:1.9;">
-          🏦 郵局匯款資訊將於電郵中顯示
+
+        <!-- 郵局說明 -->
+        <div x-show="form.paymentMethod === '郵局銀行匯款'"
+          style="background:#f0f7ff; border:1px solid #bbdefb; border-radius:6px; padding:12px 14px; font-size:12px; color:#37474f; line-height:1.9;">
+          🏦 郵局匯款資訊將於確認信中顯示，請記得在備注欄填寫手機末3碼
+        </div>
+
+        <!-- LINE PAY 說明 -->
+        <div x-show="form.paymentMethod === 'LINE PAY'"
+          style="background:#f0fff4; border:1px solid #bbf7d0; border-radius:6px; padding:14px; font-size:12px; color:#166534; line-height:1.9;">
+          <div style="font-weight:700; margin-bottom:8px;">💚 LINE PAY 付款步驟</div>
+          <div>① 完成訂單後，點擊連結加入我們的 LINE</div>
+          <div>② 完成付款後，在聊天頁面複製以下格式並傳送給我們：</div>
+          <div style="background:#fff; border:1px solid #86efac; border-radius:6px; padding:10px 12px; margin:8px 0; font-family:monospace; font-size:12px; color:#111; line-height:2;">
+            訂單編號：<span x-text="currentOrderId || 'ORD-XXXXXXX'"></span><br>
+            手機末3碼：<span x-text="form.phone ? form.phone.slice(-3) : 'XXX'"></span><br>
+            金額：NT$ <span x-text="(subtotal).toLocaleString()"></span><br>
+            已付款💰
+          </div>
+          <a href="https://line.me/ti/p/tf98MWHnC5" target="_blank"
+            style="display:inline-block; background:#00B900; color:#fff; font-size:13px; font-weight:700; padding:8px 20px; border-radius:20px; text-decoration:none; margin-top:4px;">
+            💚 加入 LINE 並付款
+          </a>
         </div>
       </div>
 
@@ -382,7 +407,7 @@ function shopApp() {
     loading: true, submitting: false,
     displayEventName: '', sheetEventName: '',
     products: [],
-    form: { name:'', phone:'', email:'', paymentMethod:'郵局銀行匯款' },
+    form: { name:'', phone:'', email:'', paymentMethod:'郵局銀行匯款' }, currentOrderId: '',
     cart: {},
     deadline: '',
     orderedQty: {},
@@ -415,7 +440,7 @@ function shopApp() {
       this.sheetEventName = this.getEventNameFromURL();
       this.displayEventName = this.sheetEventName;
       if (!this.sheetEventName) { this.loading = false; return; }
-      document.title = `代購 ${this.displayEventName} (TW) — 852hk.81jp`;
+      document.title = `代購 ${this.displayEventName} (TW) — 886tw.81jp`;
       try {
         const evName = encodeURIComponent(this.sheetEventName);
         const [prodData, subData, qtyData, evData] = await Promise.all([
@@ -579,7 +604,13 @@ function shopApp() {
 
       try {
         await fetch(GAS_API_URL, { method:'POST', mode:'no-cors', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
-        alert(`🎉 訂單送出成功！\n\n商品小計：NT$${this.subtotal}\n確認信已寄出，請於指定時間內完成匯款。\n如遇缺貨，我們將依收到匯款的先後順序安排商品。謝謝！`);
+        const resData2 = typeof resData !== 'undefined' ? resData : {};
+        this.currentOrderId = resData2.orderId || '';
+        if (this.form.paymentMethod === 'LINE PAY') {
+          alert(`🎉 訂單送出成功！\n\n訂單編號：${this.currentOrderId}\n請在 LINE 聊天頁面複製付款資訊並傳送給我們。`);
+        } else {
+          alert(`🎉 訂單送出成功！\n\n商品小計：NT$${this.subtotal}\n確認信已寄出，請於指定時間內完成匯款。\n如遇缺貨，我們將依收到匯款的先後順序安排商品。謝謝！`);
+        }
         this.cart={}; this.form.name=''; this.form.phone=''; this.form.email='';
       } catch(e) { alert('送出失敗，請確認網路連線。'); }
       finally { this.submitting=false; }
